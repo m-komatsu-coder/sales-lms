@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>営業管理システム</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: #f5f5f5; color: #222; }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #fff; border-bottom: 1px solid #e0e0e0; }
+.topbar h1 { font-size: 16px; font-weight: 500; }
+.sync-badge { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 500; background: #EAF3DE; color: #3B6D11; margin-left: 10px; }
+.nav button { padding: 6px 14px; font-size: 13px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; margin-left: 4px; }
+.nav button.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+.content { max-width: 1000px; margin: 24px auto; padding: 0 20px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.metric-card { background: #fff; border-radius: 8px; padding: 14px 16px; border: 1px solid #e0e0e0; }
+.metric-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 500; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.chart-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; }
+.chart-title { font-size: 12px; color: #888; margin-bottom: 10px; }
+.recent-table { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
+.table-header { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 80px; padding: 10px 16px; background: #f8f8f8; font-size: 12px; color: #888; font-weight: 500; }
+.table-row { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 80px; padding: 10px 16px; border-top: 1px solid #f0f0f0; font-size: 13px; align-items: center; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; }
+.badge.won { background: #EAF3DE; color: #3B6D11; }
+.badge.lost { background: #FCEBEB; color: #A32D2D; }
+.badge.progress { background: #E6F1FB; color: #185FA5; }
+.form-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+.section-title { font-size: 14px; font-weight: 500; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 12px; color: #666; font-weight: 500; }
+input, select, textarea { font-size: 13px; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; background: #fff; width: 100%; outline: none; font-family: sans-serif; }
+input:focus, select:focus, textarea:focus { border-color: #185FA5; }
+textarea { resize: vertical; min-height: 60px; }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; align-items: center; }
+.btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; background: #fff; font-family: sans-serif; }
+.btn.primary { background: #185FA5; color: #fff; border-color: #185FA5; }
+.btn.primary:hover { background: #0C447C; }
+.saving-msg { font-size: 12px; color: #888; }
+.url-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.url-row { display: flex; gap: 8px; align-items: center; }
+.url-row input { flex: 1; }
+.url-help { font-size: 12px; color: #aaa; margin-top: 8px; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 14px; }
+.search-bar input { flex: 1; }
+.customer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.customer-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; }
+.cust-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: #E6F1FB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #185FA5; flex-shrink: 0; }
+.cust-name { font-size: 13px; font-weight: 500; }
+.cust-sub { font-size: 11px; color: #888; }
+.cust-detail { font-size: 12px; color: #888; margin-top: 3px; }
+.cust-detail span { color: #222; }
+.toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 8px; font-size: 13px; background: #185FA5; color: #fff; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+.toast.show { opacity: 1; }
+.toast.error { background: #A32D2D; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center">
+    <h1>営業管理システム</h1>
+    <span class="sync-badge" id="sync-badge">Sheets 連携中</span>
+  </div>
+  <div class="nav">
+    <button class="active" onclick="switchTab('dashboard',this)">ダッシュボード</button>
+    <button onclick="switchTab('sales',this)">営業入力</button>
+    <button onclick="switchTab('customers',this)">顧客管理</button>
+    <button onclick="switchTab('settings',this)">設定</button>
+  </div>
+</div>
+
+<div class="content">
+  <div id="tab-dashboard" class="tab-panel active">
+    <div class="metrics">
+      <div class="metric-card"><div class="metric-label">今月の売上</div><div class="metric-value" id="m-revenue">¥0</div></div>
+      <div class="metric-card"><div class="metric-label">成約件数</div><div class="metric-value" id="m-won">0件</div></div>
+      <div class="metric-card"><div class="metric-label">成約率</div><div class="metric-value" id="m-rate">0%</div></div>
+      <div class="metric-card"><div class="metric-label">顧客数</div><div class="metric-value" id="m-customers">0社</div></div>
+    </div>
+    <div class="charts">
+      <div class="chart-card"><div class="chart-title">月別売上 (万円)</div><canvas id="barChart" height="160"></canvas></div>
+      <div class="chart-card"><div class="chart-title">ステータス内訳</div><canvas id="pieChart" height="160"></canvas></div>
+    </div>
+    <div class="recent-table">
+      <div class="table-header"><span>顧客名</span><span>商品名</span><span>金額</span><span>日付</span><span>状況</span></div>
+      <div id="recent-rows"></div>
+    </div>
+  </div>
+
+  <div id="tab-sales" class="tab-panel">
+    <div class="form-section">
+      <div class="section-title">営業結果の入力</div>
+      <div class="form-grid">
+        <div class="form-group"><label>顧客名 *</label><input type="text" id="s-customer" placeholder="例：株式会社山田商事"></div>
+        <div class="form-group"><label>担当者名</label><input type="text" id="s-person" placeholder="例：田中太郎"></div>
+        <div class="form-group"><label>商品・サービス名</label><input type="text" id="s-product" placeholder="例：クラウドサービスA"></div>
+        <div class="form-group"><label>金額（円）</label><input type="number" id="s-amount" placeholder="例：500000"></div>
+        <div class="form-group"><label>商談日</label><input type="date" id="s-date"></div>
+        <div class="form-group"><label>ステータス</label><select id="s-status"><option value="progress">商談中</option><option value="won">成約</option><option value="lost">失注</option></select></div>
+        <div class="form-group full"><label>メモ</label><textarea id="s-memo" placeholder="商談内容や特記事項..."></textarea></div>
+      </div>
+      <div class="btn-row">
+        <span class="saving-msg" id="sales-saving"></span>
+        <button class="btn" onclick="clearSalesForm()">クリア</button>
+        <button class="btn primary" onclick="saveSales()">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-customers" class="tab-panel">
+    <div class="form-section">
+      <div class="section-title">顧客登録</div>
+      <div class="form-grid">
+        <div class="form-group"><label>会社名 *</label><input type="text" id="c-company" placeholder="例：株式会社ABC"></div>
+        <div class="form-group"><label>担当者名</label><input type="text" id="c-contact" placeholder="例：佐藤花子"></div>
+        <div class="form-group"><label>メールアドレス</label><input type="email" id="c-email" placeholder="例：sato@abc.co.jp"></div>
+        <div class="form-group"><label>電話番号</label><input type="tel" id="c-phone" placeholder="例：03-1234-5678"></div>
+        <div class="form-group full"><label>業種・備考</label><input type="text" id="c-industry" placeholder="例：IT・SaaS"></div>
+      </div>
+      <div class="btn-row">
+        <span class="saving-msg" id="cust-saving"></span>
+        <button class="btn" onclick="clearCustomerForm()">clearCustomerForm</button>
+        <button class="btn primary" onclick="saveCustomer()">登録する</button>
+      </div>
+    </div>
+    <div class="search-bar"><input type="text" id="cust-search" placeholder="顧客を検索..." oninput="renderCustomers()"></div>
+    <div class="customer-grid" id="customer-grid"></div>
+  </div>
+
+  <div id="tab-settings" class="tab-panel">
+    <div class="url-section">
+      <div class="section-title">Google スプレッドシート連携</div>
+      <div class="url-row">
+        <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/...">
+        <button class="btn primary" onclick="saveGasUrl()">接続する</button>
+        <button class="btn" onclick="testConnection()">テスト</button>
+      </div>
+      <div class="url-help">デプロイ URL を貼り付けてください。</div>
+    </div>
+    <div class="form-section">
+      <div class="section-title">データ管理</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" onclick="syncFromSheet()">シートからデータを読み込む</button>
+        <button class="btn" onclick="clearLocalData()">ローカルデータをクリア</button>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#888">
+        ローカル保存: 営業 <span id="local-sales-count">0</span> 件 / 顧客 <span id="local-cust-count">0</span> 件
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbyQkIGedTRXn6Eniv8XwZJBi0QAKzWTO1LXULnyd9M4BeecAbcq8sLqPm2BEg_Ngn3a/exec';
+
+var sales = JSON.parse(localStorage.getItem('lms_sales') || '[]');
+var customers = JSON.parse(localStorage.getItem('lms_customers') || '[]');
+var barChart, pieChart;
+
+function persist() {
+  localStorage.setItem('lms_sales', JSON.stringify(sales));
+  localStorage.setItem('lms_customers', JSON.stringify(customers));
+  var sc = document.getElementById('local-sales-count');
+  var cc = document.getElementById('local-cust-count');
+  if (sc) sc.textContent = sales.length;
+  if (cc) cc.textContent = customers.length;
+}
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function() { t.className = 'toast'; }, 2500);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav button').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'customers') renderCustomers();
+  if (name === 'settings') {
+    document.getElementById('gas-url').value = GAS_URL;
+    persist();
+  }
+}
+
+async function postGas(action, data) {
+  try {
+    var res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: action, data: data }),
+      headers: { 'Content-Type': 'text/plain' }
+    });
+    return await res.json();
+  } catch(e) {
+    return null;
+  }
+}
+
+async function saveSales() {
+  var customer = document.getElementById('s-customer').value.trim();
+  if (!customer) { showToast('顧客名を入力してください', true); return; }
+  var entry = {
+    id: Date.now(),
+    customer: customer,
+    person: document.getElementById('s-person').value,
+    product: document.getElementById('s-product').value,
+    amount: parseInt(document.getElementById('s-amount').value) || 0,
+    date: document.getElementById('s-date').value || new Date().toISOString().split('T')[0],
+    status: document.getElementById('s-status').value,
+    memo: document.getElementById('s-memo').value
+  };
+  sales.unshift(entry);
+  persist();
+  var msg = document.getElementById('sales-saving');
+  msg.textContent = 'シートに保存中...';
+  var result = await postGas('saveSales', entry);
+  if (result && !result.error) {
+    msg.textContent = 'スプレッドシートに保存しました';
+  } else {
+    msg.textContent = result && result.error ? 'エラー: ' + result.error : '接続失敗（ローカルには保存済み）';
+  }
+  setTimeout(function() { msg.textContent = ''; }, 3000);
+  clearSalesForm();
+  renderDashboard();
+}
+
+function clearSalesForm() {
+  ['s-customer','s-person','s-product','s-amount','s-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+  document.getElementById('s-status').value = 'progress';
+  document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+}
+
+async function saveCustomer() {
+  var company = document.getElementById('c-company').value.trim();
+  if (!company) { showToast('会社名を入力してください', true); return; }
+  var entry = {
+    id: Date.now(),
+    company: company,
+    contact: document.getElementById('c-contact').value,
+    email: document.getElementById('c-email').value,
+    phone: document.getElementById('c-phone').value,
+    industry: document.getElementById('c-industry').value
+  };
+  customers.unshift(entry);
+  persist();
+  var msg = document.getElementById('cust-saving');
+  msg.textContent = 'シートに保存中...';
+  var result = await postGas('saveCustomer', entry);
+  if (result && !result.error) {
+    msg.textContent = 'スプレッドシートに保存しました';
+  } else {
+    msg.textContent = '接続失敗（ローカルには保存済み）';
+  }
+  setTimeout(function() { msg.textContent = ''; }, 3000);
+  clearCustomerForm();
+  renderCustomers();
+}
+
+function clearCustomerForm() {
+  ['c-company','c-contact','c-email','c-phone','c-industry'].forEach(function(id) { document.getElementById(id).value = ''; });
+}
+
+function saveGasUrl() {
+  var val = document.getElementById('gas-url').value.trim();
+  GAS_URL = val;
+  localStorage.setItem('lms_gas_url', val);
+  showToast('URL を保存しました');
+}
+
+async function testConnection() {
+  var result = await postGas('ping', {});
+  if (result && result.message) showToast('接続成功！');
+  else showToast('接続失敗', true);
+}
+
+async function syncFromSheet() {
+  showToast('読み込み中...');
+  var sr = await postGas('getSales', {});
+  var cr = await postGas('getCustomers', {});
+  if (Array.isArray(sr)) sales = sr;
+  if (Array.isArray(cr)) customers = cr;
+  persist();
+  renderDashboard();
+  renderCustomers();
+  showToast('読み込み完了: 営業 ' + sales.length + ' 件 / 顧客 ' + customers.length + ' 件');
+}
+
+function clearLocalData() {
+  if (!confirm('ローカルデータをクリアしますか？')) return;
+  sales = []; customers = [];
+  persist();
+  renderDashboard();
+  renderCustomers();
+}
+
+function renderCustomers() {
+  var q = (document.getElementById('cust-search').value || '').toLowerCase();
+  var filtered = customers.filter(function(c) {
+    return (c.company||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
+  });
+  var grid = document.getElementById('customer-grid');
+  if (!filtered.length) { grid.innerHTML = '<p style="color:#aaa;font-size:13px;grid-column:1/-1">登録済みの顧客がありません</p>'; return; }
+  grid.innerHTML = filtered.map(function(c) {
+    return '<div class="customer-card"><div class="cust-header"><div class="avatar">' + (c.company||'??').slice(0,2) + '</div><div><div class="cust-name">' + (c.company||'') + '</div><div class="cust-sub">' + (c.contact||'—') + '</div></div></div><div class="cust-detail">メール：<span>' + (c.email||'—') + '</span></div><div class="cust-detail">電話：<span>' + (c.phone||'—') + '</span></div><div class="cust-detail">業種：<span>' + (c.industry||'—') + '</span></div></div>';
+  }).join('');
+}
+
+function renderDashboard() {
+  var now = new Date();
+  var thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  var thisSales = sales.filter(function(s) { return (s.date||'').startsWith(thisMonth); });
+  var wonSales = thisSales.filter(function(s) { return s.status === 'won'; });
+  var totalRevenue = wonSales.reduce(function(a,b) { return a + (Number(b.amount)||0); }, 0);
+  document.getElementById('m-revenue').textContent = '¥' + totalRevenue.toLocaleString();
+  document.getElementById('m-won').textContent = wonSales.length + '件';
+  var rate = thisSales.length ? Math.round(wonSales.length / thisSales.length * 100) : 0;
+  document.getElementById('m-rate').textContent = rate + '%';
+  document.getElementById('m-customers').textContent = customers.length + '社';
+
+  var recent = sales.slice(0, 8);
+  var rows = document.getElementById('recent-rows');
+  rows.innerHTML = recent.length ? recent.map(function(s) {
+    var badge = s.status === 'won' ? 'won' : s.status === 'lost' ? 'lost' : 'progress';
+    var label = s.status === 'won' ? '成約' : s.status === 'lost' ? '失注' : '商談中';
+    return '<div class="table-row"><span>' + (s.customer||'') + '</span><span style="color:#888">' + (s.product||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span style="color:#888">' + (s.date||'') + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
+  }).join('') : '<div style="padding:16px;text-align:center;font-size:13px;color:#aaa">データがありません</div>';
+
+  var months = [], monthRevs = [];
+  for (var i = 5; i >= 0; i--) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    months.push((d.getMonth()+1) + '月');
+    var rev = sales.filter(function(s) { return (s.date||'').startsWith(key) && s.status === 'won'; }).reduce(function(a,b) { return a+(Number(b.amount)||0); }, 0);
+    monthRevs.push(Math.round(rev / 10000));
+  }
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: { labels: months, datasets: [{ data: monthRevs, backgroundColor: '#378ADD', borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: {} } }
+  });
+
+  var counts = ['won','progress','lost'].map(function(s) { return sales.filter(function(r) { return r.status === s; }).length; });
+  if (pieChart) pieChart.destroy();
+  pieChart = new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: { labels: ['成約','商談中','失注'], datasets: [{ data: counts, backgroundColor: ['#639922','#378ADD','#E24B4A'], borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+var savedUrl = localStorage.getItem('lms_gas_url');
+if (savedUrl) GAS_URL = savedUrl;
+document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+persist();
+renderDashboard();
+renderCustomers();
+</script>
+</body>
+</html>
