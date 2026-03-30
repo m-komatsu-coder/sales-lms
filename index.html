@@ -2,105 +2,315 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>営業管理システム</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: sans-serif; background: #f5f5f5; color: #222; }
-.topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: #fff; border-bottom: 1px solid #e0e0e0; }
-.topbar h1 { font-size: 16px; font-weight: 500; }
-.sync-badge { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 500; background: #EAF3DE; color: #3B6D11; margin-left: 10px; }
-.nav button { padding: 6px 14px; font-size: 13px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; margin-left: 4px; }
-.nav button.active { background: #185FA5; color: #fff; border-color: #185FA5; }
-.content { max-width: 1000px; margin: 24px auto; padding: 0 20px; }
+body { font-family: 'Helvetica Neue', sans-serif; background: #f0f2f5; color: #1a1a1a; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 28px; background: #fff; border-bottom: 1px solid #e8e8e8; position: sticky; top: 0; z-index: 100; }
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.sync-badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+.nav { display: flex; gap: 2px; background: #f0f2f5; padding: 3px; border-radius: 10px; }
+.nav button { padding: 6px 14px; font-size: 13px; border-radius: 8px; border: none; background: transparent; cursor: pointer; color: #666; font-family: inherit; font-weight: 500; transition: all 0.15s; white-space: nowrap; }
+.nav button.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.nav button:hover:not(.active) { color: #1a1a1a; }
+
+.content { max-width: 1100px; margin: 24px auto; padding: 0 24px 40px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-.metric-card { background: #fff; border-radius: 8px; padding: 14px 16px; border: 1px solid #e0e0e0; }
-.metric-label { font-size: 12px; color: #888; margin-bottom: 4px; }
-.metric-value { font-size: 22px; font-weight: 500; }
-.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-.chart-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; }
-.chart-title { font-size: 12px; color: #888; margin-bottom: 10px; }
-.recent-table { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; overflow: hidden; }
-.table-header { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 80px; padding: 10px 16px; background: #f8f8f8; font-size: 12px; color: #888; font-weight: 500; }
-.table-row { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 80px; padding: 10px 16px; border-top: 1px solid #f0f0f0; font-size: 13px; align-items: center; }
-.badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 500; }
-.badge.won { background: #EAF3DE; color: #3B6D11; }
-.badge.lost { background: #FCEBEB; color: #A32D2D; }
-.badge.progress { background: #E6F1FB; color: #185FA5; }
-.form-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
-.section-title { font-size: 14px; font-weight: 500; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+
+/* Metrics */
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+.metric-card { background: #fff; border-radius: 12px; padding: 16px 18px; border: 1px solid #eee; }
+.metric-label { font-size: 11px; color: #999; margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; }
+.metric-sub { font-size: 11px; color: #bbb; margin-top: 3px; }
+
+/* Charts */
+.charts { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 20px; }
+.chart-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 18px; }
+.chart-title { font-size: 12px; font-weight: 600; color: #999; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Table */
+.data-table { background: #fff; border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+.table-header { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 90px; padding: 10px 18px; background: #fafafa; font-size: 11px; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #eee; }
+.table-row { display: grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 90px; padding: 11px 18px; border-bottom: 1px solid #f5f5f5; font-size: 13px; align-items: center; transition: background 0.1s; }
+.table-row:last-child { border-bottom: none; }
+.table-row:hover { background: #fafafa; }
+.badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge.won { background: #e8f5e9; color: #2e7d32; }
+.badge.lost { background: #ffebee; color: #c62828; }
+.badge.progress { background: #e3f2fd; color: #1565c0; }
+.badge.pending { background: #fff3e0; color: #e65100; }
+.badge.done { background: #e8f5e9; color: #2e7d32; }
+.badge.today { background: #fff3e0; color: #e65100; border: 1px solid #ffcc02; }
+.badge.tomorrow { background: #fce4ec; color: #880e4f; }
+.badge.overdue { background: #ffebee; color: #c62828; }
+
+/* Forms */
+.form-section { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 22px; margin-bottom: 16px; }
+.section-title { font-size: 13px; font-weight: 600; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; color: #333; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-group { display: flex; flex-direction: column; gap: 5px; }
 .form-group.full { grid-column: 1 / -1; }
-label { font-size: 12px; color: #666; font-weight: 500; }
-input, select, textarea { font-size: 13px; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; background: #fff; width: 100%; outline: none; font-family: sans-serif; }
-input:focus, select:focus, textarea:focus { border-color: #185FA5; }
-textarea { resize: vertical; min-height: 60px; }
-.btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; align-items: center; }
-.btn { padding: 8px 18px; border-radius: 6px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; background: #fff; font-family: sans-serif; }
-.btn.primary { background: #185FA5; color: #fff; border-color: #185FA5; }
-.btn.primary:hover { background: #0C447C; }
+label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+input, select, textarea { font-size: 13px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 9px 12px; background: #fff; width: 100%; outline: none; font-family: inherit; color: #1a1a1a; transition: border 0.15s; }
+input:focus, select:focus, textarea:focus { border-color: #1976d2; box-shadow: 0 0 0 3px rgba(25,118,210,0.08); }
+textarea { resize: vertical; min-height: 65px; }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; align-items: center; }
+.btn { padding: 8px 18px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #ddd; background: #fff; font-family: inherit; font-weight: 500; transition: all 0.15s; }
+.btn:hover { background: #f5f5f5; }
+.btn.primary { background: #1976d2; color: #fff; border-color: #1976d2; }
+.btn.primary:hover { background: #1565c0; }
 .saving-msg { font-size: 12px; color: #888; }
-.url-section { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+
+/* Settings */
+.url-section { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
 .url-row { display: flex; gap: 8px; align-items: center; }
 .url-row input { flex: 1; }
-.url-help { font-size: 12px; color: #aaa; margin-top: 8px; }
+.url-help { font-size: 12px; color: #bbb; margin-top: 8px; line-height: 1.6; }
+
+/* Customers */
 .search-bar { display: flex; gap: 8px; margin-bottom: 14px; }
 .search-bar input { flex: 1; }
 .customer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.customer-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; }
-.cust-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.avatar { width: 34px; height: 34px; border-radius: 50%; background: #E6F1FB; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #185FA5; flex-shrink: 0; }
-.cust-name { font-size: 13px; font-weight: 500; }
-.cust-sub { font-size: 11px; color: #888; }
-.cust-detail { font-size: 12px; color: #888; margin-top: 3px; }
-.cust-detail span { color: #222; }
-.toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 8px; font-size: 13px; background: #185FA5; color: #fff; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+.customer-card { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 16px; transition: box-shadow 0.15s; }
+.customer-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.cust-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: #e3f2fd; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #1565c0; flex-shrink: 0; }
+.cust-name { font-size: 13px; font-weight: 600; }
+.cust-sub { font-size: 11px; color: #999; }
+.cust-detail { font-size: 12px; color: #999; margin-top: 4px; }
+.cust-detail span { color: #333; }
+
+/* Schedule / Calendar */
+.schedule-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.alert-box { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 16px; }
+.alert-title { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+.alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: 8px; margin-bottom: 6px; }
+.alert-item.today-item { background: #fff8e1; border: 1px solid #ffe082; }
+.alert-item.tomorrow-item { background: #fce4ec; border: 1px solid #f48fb1; }
+.alert-item.overdue-item { background: #ffebee; border: 1px solid #ef9a9a; }
+.alert-item-title { font-size: 13px; font-weight: 500; }
+.alert-item-sub { font-size: 11px; color: #888; margin-top: 2px; }
+
+.calendar-wrap { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.cal-title { font-size: 15px; font-weight: 600; }
+.cal-nav { display: flex; gap: 6px; }
+.cal-nav button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid #eee; background: #fff; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.cal-nav button:hover { background: #f5f5f5; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-day-header { text-align: center; font-size: 11px; font-weight: 600; color: #999; padding: 6px 0; text-transform: uppercase; }
+.cal-day-header.sun { color: #ef5350; }
+.cal-day-header.sat { color: #1976d2; }
+.cal-cell { min-height: 70px; border-radius: 8px; padding: 6px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+.cal-cell:hover { background: #f5f5f5; }
+.cal-cell.other-month { opacity: 0.3; }
+.cal-cell.today-cell { background: #e3f2fd; border-color: #1976d2; }
+.cal-date { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 3px; }
+.cal-cell.today-cell .cal-date { color: #1976d2; }
+.cal-event { font-size: 10px; padding: 2px 5px; border-radius: 4px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.cal-event.ev-pending { background: #fff3e0; color: #e65100; }
+.cal-event.ev-done { background: #e8f5e9; color: #2e7d32; }
+
+.schedule-list { background: #fff; border: 1px solid #eee; border-radius: 12px; overflow: hidden; }
+.sch-table-header { display: grid; grid-template-columns: 140px 100px 1.5fr 2fr 90px 80px; padding: 10px 18px; background: #fafafa; font-size: 11px; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #eee; }
+.sch-row { display: grid; grid-template-columns: 140px 100px 1.5fr 2fr 90px 80px; padding: 11px 18px; border-bottom: 1px solid #f5f5f5; font-size: 13px; align-items: center; }
+.sch-row:last-child { border-bottom: none; }
+.sch-row:hover { background: #fafafa; }
+.sch-row.is-done { opacity: 0.5; }
+.done-btn { padding: 4px 10px; font-size: 11px; border-radius: 6px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-weight: 500; transition: all 0.15s; }
+.done-btn:hover { background: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
+.done-btn.undone { background: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
+.done-btn.undone:hover { background: #ffebee; border-color: #ef9a9a; color: #c62828; }
+
+/* Members */
+.member-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.member-tag { display: flex; align-items: center; gap: 6px; background: #e3f2fd; color: #1565c0; padding: 5px 10px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+.member-tag button { background: none; border: none; cursor: pointer; color: #1565c0; font-size: 14px; line-height: 1; padding: 0; opacity: 0.6; }
+.member-tag button:hover { opacity: 1; }
+.member-add-row { display: flex; gap: 8px; margin-top: 10px; }
+.member-add-row input { flex: 1; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 10px; font-size: 13px; background: #1a1a1a; color: #fff; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; font-weight: 500; }
 .toast.show { opacity: 1; }
-.toast.error { background: #A32D2D; }
+.toast.error { background: #c62828; }
+.empty-state { padding: 32px; text-align: center; font-size: 13px; color: #bbb; }
+
+/* Login */
+.login-overlay { position: fixed; inset: 0; background: #f0f2f5; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.login-card { background: #fff; border-radius: 16px; padding: 48px 40px; text-align: center; border: 1px solid #eee; max-width: 400px; width: 90%; }
+.login-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.3px; }
+.login-sub { font-size: 13px; color: #999; margin-bottom: 32px; line-height: 1.6; }
+.login-user { display: flex; align-items: center; gap: 10px; background: #f8f8f8; border-radius: 10px; padding: 10px 14px; margin-top: 16px; }
+.login-avatar { width: 36px; height: 36px; border-radius: 50%; }
+.login-name { font-size: 13px; font-weight: 500; text-align: left; }
+.login-email { font-size: 11px; color: #999; }
+.logout-btn { margin-top: 8px; font-size: 12px; color: #999; background: none; border: none; cursor: pointer; text-decoration: underline; }
+.user-info { display: flex; align-items: center; gap: 8px; }
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div style="display:flex;align-items:center">
-    <h1>営業管理システム</h1>
-    <span class="sync-badge" id="sync-badge">Sheets 連携中</span>
-  </div>
-  <div class="nav">
-    <button class="active" onclick="switchTab('dashboard',this)">ダッシュボード</button>
-    <button onclick="switchTab('sales',this)">営業入力</button>
-    <button onclick="switchTab('customers',this)">顧客管理</button>
-    <button onclick="switchTab('settings',this)">設定</button>
+<div id="login-overlay" class="login-overlay">
+  <div class="login-card">
+    <div class="login-title">営業管理システム</div>
+    <div class="login-sub">ish-inc.com の Google アカウントでログインしてください</div>
+    <div id="g_id_onload"
+      data-client_id="890379052761-dea3vk4s71r563ij4v6fljd86fnq7lm5.apps.googleusercontent.com"
+      data-callback="onGoogleLogin"
+      data-auto_prompt="true">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-size="large"
+      data-theme="outline"
+      data-text="signin_with"
+      data-shape="rectangular"
+      data-locale="ja"
+      data-width="300">
+    </div>
   </div>
 </div>
 
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>営業管理システム</h1>
+    <span class="sync-badge" id="sync-badge">Sheets 連携中</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="user-info" id="user-info" style="display:none">
+      <img id="user-avatar" class="login-avatar" src="" alt="">
+      <div>
+        <div id="user-name" style="font-size:13px;font-weight:500"></div>
+        <div id="user-email" style="font-size:11px;color:#999"></div>
+      </div>
+      <button class="logout-btn" onclick="logout()">ログアウト</button>
+    </div>
+    <div class="nav">
+      <button class="active" onclick="switchTab('dashboard',this)">ダッシュボード</button>
+      <button onclick="switchTab('schedule',this)">商談予定</button>
+      <button onclick="switchTab('sales',this)">営業入力</button>
+      <button onclick="switchTab('customers',this)">顧客管理</button>
+      <button onclick="switchTab('history',this)">商談履歴</button>
+      <button onclick="switchTab('settings',this)">設定</button>
+    </div>
+  </div>
+</div>
+
+<div id="reminder-banner" style="display:none;background:#fff8e1;border-bottom:1px solid #ffe082;padding:10px 28px;font-size:13px;color:#e65100">
+  <span id="reminder-text"></span>
+  <button onclick="document.getElementById('reminder-banner').style.display='none'" style="margin-left:12px;background:none;border:none;cursor:pointer;color:#e65100;font-size:16px;line-height:1">×</button>
+</div>
+
 <div class="content">
+
+  <!-- Dashboard -->
   <div id="tab-dashboard" class="tab-panel active">
     <div class="metrics">
-      <div class="metric-card"><div class="metric-label">今月の売上</div><div class="metric-value" id="m-revenue">¥0</div></div>
-      <div class="metric-card"><div class="metric-label">成約件数</div><div class="metric-value" id="m-won">0件</div></div>
-      <div class="metric-card"><div class="metric-label">成約率</div><div class="metric-value" id="m-rate">0%</div></div>
-      <div class="metric-card"><div class="metric-label">顧客数</div><div class="metric-value" id="m-customers">0社</div></div>
+      <div class="metric-card"><div class="metric-label">今月の売上</div><div class="metric-value" id="m-revenue">¥0</div><div class="metric-sub">成約ベース</div></div>
+      <div class="metric-card"><div class="metric-label">成約件数</div><div class="metric-value" id="m-won">0件</div><div class="metric-sub">今月</div></div>
+      <div class="metric-card"><div class="metric-label">成約率</div><div class="metric-value" id="m-rate">0%</div><div class="metric-sub">成約 / 全商談</div></div>
+      <div class="metric-card"><div class="metric-label">今月の予定</div><div class="metric-value" id="m-schedule">0件</div><div class="metric-sub">商談予定</div></div>
     </div>
     <div class="charts">
-      <div class="chart-card"><div class="chart-title">月別売上 (万円)</div><canvas id="barChart" height="160"></canvas></div>
+      <div class="chart-card"><div class="chart-title">月別売上（万円）</div><canvas id="barChart" height="160"></canvas></div>
       <div class="chart-card"><div class="chart-title">ステータス内訳</div><canvas id="pieChart" height="160"></canvas></div>
     </div>
-    <div class="recent-table">
+    <div class="data-table">
       <div class="table-header"><span>顧客名</span><span>商品名</span><span>金額</span><span>日付</span><span>状況</span></div>
       <div id="recent-rows"></div>
     </div>
   </div>
 
+  <!-- Schedule -->
+  <div id="tab-schedule" class="tab-panel">
+    <div class="form-section" style="margin-bottom:16px">
+      <div class="section-title">商談予定の登録</div>
+      <div class="form-grid">
+        <div class="form-group"><label>社内営業担当者 *</label><select id="sc-person"><option value="">— 選択 —</option></select></div>
+        <div class="form-group"><label>商談先 社名 *</label><input type="text" id="sc-customer" placeholder="例：株式会社ABC"></div>
+        <div class="form-group"><label>営業先 担当者名（先方）</label><input type="text" id="sc-contact" placeholder="例：山田 太郎"></div>
+        <div class="form-group"><label>営業先 役職</label><input type="text" id="sc-position" placeholder="例：代表取締役・部長"></div>
+        <div class="form-group"><label>予定日 *</label><input type="date" id="sc-date"></div>
+        <div class="form-group"><label>時間</label><input type="time" id="sc-time"></div>
+        <div class="form-group"><label>アポソース *</label>
+          <select id="sc-aposource">
+            <option value="">— 選択 —</option>
+            <option>現S紹介</option>
+            <option>管S紹介</option>
+            <option>経営者交流会</option>
+            <option>テレアポ(社内)</option>
+            <option>テレアポ(外部)</option>
+            <option>現S</option>
+            <option>管S</option>
+            <option>SNS 源泉</option>
+          </select>
+        </div>
+        <div class="form-group"><label>営業手法 *</label>
+          <select id="sc-method">
+            <option value="">— 選択 —</option>
+            <option>対面</option>
+            <option>リモート</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>目的・内容</label><input type="text" id="sc-purpose" placeholder="例：初回提案・製品デモ・クロージング"></div>
+        <div class="form-group full"><label>メモ</label><textarea id="sc-memo" placeholder="準備事項・注意点など..."></textarea></div>
+      </div>
+      <div class="btn-row">
+        <span class="saving-msg" id="sc-saving"></span>
+        <button class="btn" onclick="clearScForm()">クリア</button>
+        <button class="btn primary" onclick="saveSchedule()">登録する</button>
+      </div>
+    </div>
+
+    <div class="schedule-top">
+      <div class="alert-box">
+        <div class="alert-title">今日・明日の予定</div>
+        <div id="alert-today-list"><div class="empty-state" style="padding:12px">今日の予定はありません</div></div>
+      </div>
+      <div class="alert-box">
+        <div class="alert-title">期限切れ（未完了）</div>
+        <div id="alert-overdue-list"><div class="empty-state" style="padding:12px">期限切れはありません</div></div>
+      </div>
+    </div>
+
+    <div class="calendar-wrap">
+      <div class="cal-header">
+        <div class="cal-title" id="cal-title"></div>
+        <div class="cal-nav">
+          <button onclick="changeMonth(-1)">‹</button>
+          <button onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <div class="schedule-list">
+      <div class="sch-table-header"><span>管理番号</span><span>日時</span><span>顧客名</span><span>目的・内容</span><span>状況</span><span></span></div>
+      <div id="schedule-rows"></div>
+    </div>
+  </div>
+
+  <!-- Sales Input -->
   <div id="tab-sales" class="tab-panel">
     <div class="form-section">
       <div class="section-title">営業結果の入力</div>
       <div class="form-grid">
+        <div class="form-group full">
+          <label>管理番号 * <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">（過去1ヶ月以内の未対応予定）</span></label>
+          <select id="s-scnumber" onchange="onScNumberSelect(this.value)" style="font-family:monospace">
+            <option value="">— 予定を選択 —</option>
+          </select>
+        </div>
         <div class="form-group"><label>顧客名 *</label><input type="text" id="s-customer" placeholder="例：株式会社山田商事"></div>
-        <div class="form-group"><label>担当者名</label><input type="text" id="s-person" placeholder="例：田中太郎"></div>
+        <div class="form-group"><label>担当者</label><select id="s-person"><option value="">— 選択 —</option></select></div>
         <div class="form-group"><label>商品・サービス名</label><input type="text" id="s-product" placeholder="例：クラウドサービスA"></div>
         <div class="form-group"><label>金額（円）</label><input type="number" id="s-amount" placeholder="例：500000"></div>
         <div class="form-group"><label>商談日</label><input type="date" id="s-date"></div>
@@ -115,6 +325,7 @@ textarea { resize: vertical; min-height: 60px; }
     </div>
   </div>
 
+  <!-- Customers -->
   <div id="tab-customers" class="tab-panel">
     <div class="form-section">
       <div class="section-title">顧客登録</div>
@@ -127,7 +338,7 @@ textarea { resize: vertical; min-height: 60px; }
       </div>
       <div class="btn-row">
         <span class="saving-msg" id="cust-saving"></span>
-        <button class="btn" onclick="clearCustomerForm()">clearCustomerForm</button>
+        <button class="btn" onclick="clearCustomerForm()">クリア</button>
         <button class="btn primary" onclick="saveCustomer()">登録する</button>
       </div>
     </div>
@@ -135,6 +346,45 @@ textarea { resize: vertical; min-height: 60px; }
     <div class="customer-grid" id="customer-grid"></div>
   </div>
 
+  <!-- History -->
+  <div id="tab-history" class="tab-panel">
+    <div class="form-section" style="margin-bottom:16px">
+      <div class="section-title">顧客を選択</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="text" id="hist-search" placeholder="会社名で検索..." oninput="renderHistoryList()" style="flex:1">
+      </div>
+      <div id="hist-customer-list" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div>
+    </div>
+    <div id="hist-detail" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div id="hist-company-title" style="font-size:16px;font-weight:600"></div>
+        <button class="btn" onclick="closeHistory()">← 一覧に戻る</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div class="metric-card"><div class="metric-label">総商談数</div><div class="metric-value" id="hist-total">0</div></div>
+        <div class="metric-card"><div class="metric-label">成約数</div><div class="metric-value" id="hist-won">0</div></div>
+        <div class="metric-card"><div class="metric-label">成約率</div><div class="metric-value" id="hist-rate">0%</div></div>
+        <div class="metric-card"><div class="metric-label">累計売上</div><div class="metric-value" id="hist-revenue">¥0</div></div>
+      </div>
+      <div class="data-table">
+        <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 90px;padding:10px 18px;background:#fafafa;font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #eee">
+          <span>日付</span><span>管理番号</span><span>商品名</span><span>金額</span><span>状況</span>
+        </div>
+        <div id="hist-rows"></div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:12px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">商談予定履歴</div>
+        <div class="data-table">
+          <div style="display:grid;grid-template-columns:120px 140px 1fr 90px;padding:10px 18px;background:#fafafa;font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #eee">
+            <span>日付</span><span>管理番号</span><span>目的</span><span>状況</span>
+          </div>
+          <div id="hist-schedule-rows"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
   <div id="tab-settings" class="tab-panel">
     <div class="url-section">
       <div class="section-title">Google スプレッドシート連携</div>
@@ -146,34 +396,117 @@ textarea { resize: vertical; min-height: 60px; }
       <div class="url-help">デプロイ URL を貼り付けてください。</div>
     </div>
     <div class="form-section">
-      <div class="section-title">データ管理</div>
-      <div style="display:flex;gap:10px;">
+      <div class="section-title">営業メンバー管理</div>
+      <div class="member-add-row">
+        <input type="text" id="member-input" placeholder="名前を入力（例：田中太郎）" onkeydown="if(event.key==='Enter')addMember()">
+        <button class="btn primary" onclick="addMember()">追加</button>
+      </div>
+      <div class="member-list" id="member-list"></div>
+    </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn" onclick="syncFromSheet()">シートからデータを読み込む</button>
         <button class="btn" onclick="clearLocalData()">ローカルデータをクリア</button>
       </div>
-      <div style="margin-top:10px;font-size:12px;color:#888">
-        ローカル保存: 営業 <span id="local-sales-count">0</span> 件 / 顧客 <span id="local-cust-count">0</span> 件
+      <div style="margin-top:12px;font-size:12px;color:#aaa">
+        ローカル保存: 営業 <span id="local-sales-count">0</span> 件 / 顧客 <span id="local-cust-count">0</span> 件 / 予定 <span id="local-sc-count">0</span> 件
       </div>
     </div>
-  </div>
-</div>
+    <div class="form-section">
+      <div class="section-title">CSVエクスポート</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn primary" onclick="exportCsv('sales')">営業データをCSV出力</button>
+        <button class="btn primary" onclick="exportCsv('customers')">顧客データをCSV出力</button>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#bbb">ローカルに保存されているデータをCSVファイルとしてダウンロードします。</div>
+    </div>
+    <div class="form-section">
+      <div class="section-title">リマインダ通知</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.6">ブラウザの通知許可を有効にすると、当日・翌日の商談予定をお知らせします。アプリを開いている間、毎時チェックします。</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn primary" onclick="requestNotifyPermission()">通知を許可する</button>
+        <span id="notify-status" style="font-size:12px;color:#999"></span>
+      </div>
+    </div>
 
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbyQkIGedTRXn6Eniv8XwZJBi0QAKzWTO1LXULnyd9M4BeecAbcq8sLqPm2BEg_Ngn3a/exec';
-
+var GAS_URL = '';
 var sales = JSON.parse(localStorage.getItem('lms_sales') || '[]');
 var customers = JSON.parse(localStorage.getItem('lms_customers') || '[]');
+var schedules = JSON.parse(localStorage.getItem('lms_schedules') || '[]');
+var members = JSON.parse(localStorage.getItem('lms_members') || '[]');
+var calYear, calMonth;
 var barChart, pieChart;
+
+function generateScNumber() {
+  var now = new Date();
+  var dateStr = now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+  var prefix = 'SC-' + dateStr + '-';
+  var sameDay = schedules.filter(function(s) { return (s.scNumber||'').startsWith(prefix); });
+  var seq = String(sameDay.length + 1).padStart(3, '0');
+  return prefix + seq;
+}
 
 function persist() {
   localStorage.setItem('lms_sales', JSON.stringify(sales));
   localStorage.setItem('lms_customers', JSON.stringify(customers));
-  var sc = document.getElementById('local-sales-count');
-  var cc = document.getElementById('local-cust-count');
-  if (sc) sc.textContent = sales.length;
-  if (cc) cc.textContent = customers.length;
+  localStorage.setItem('lms_schedules', JSON.stringify(schedules));
+  localStorage.setItem('lms_members', JSON.stringify(members));
+  var e1 = document.getElementById('local-sales-count');
+  var e2 = document.getElementById('local-cust-count');
+  var e3 = document.getElementById('local-sc-count');
+  if (e1) e1.textContent = sales.length;
+  if (e2) e2.textContent = customers.length;
+  if (e3) e3.textContent = schedules.length;
+}
+
+function updateMemberDropdowns() {
+  var selects = ['s-person', 'sc-person'];
+  selects.forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var current = sel.value;
+    sel.innerHTML = '<option value="">— 選択 —</option>';
+    members.forEach(function(m) {
+      var opt = document.createElement('option');
+      opt.value = m; opt.textContent = m;
+      sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+  });
+}
+
+function renderMemberList() {
+  var list = document.getElementById('member-list');
+  if (!list) return;
+  if (!members.length) { list.innerHTML = '<span style="font-size:13px;color:#bbb">メンバーが登録されていません</span>'; return; }
+  list.innerHTML = members.map(function(m, i) {
+    return '<div class="member-tag"><span>' + m + '</span><button onclick="removeMember(' + i + ')" title="削除">×</button></div>';
+  }).join('');
+}
+
+function addMember() {
+  var input = document.getElementById('member-input');
+  var name = input.value.trim();
+  if (!name) return;
+  if (members.indexOf(name) >= 0) { showToast('すでに登録されています', true); return; }
+  members.push(name);
+  persist();
+  input.value = '';
+  renderMemberList();
+  updateMemberDropdowns();
+  showToast(name + ' を追加しました');
+}
+
+function removeMember(idx) {
+  var name = members[idx];
+  if (!confirm(name + ' を削除しますか？')) return;
+  members.splice(idx, 1);
+  persist();
+  renderMemberList();
+  updateMemberDropdowns();
 }
 
 function showToast(msg, isError) {
@@ -190,10 +523,10 @@ function switchTab(name, btn) {
   btn.classList.add('active');
   if (name === 'dashboard') renderDashboard();
   if (name === 'customers') renderCustomers();
-  if (name === 'settings') {
-    document.getElementById('gas-url').value = GAS_URL;
-    persist();
-  }
+  if (name === 'schedule') renderSchedule();
+  if (name === 'sales') updateScNumberDropdown();
+  if (name === 'history') { renderHistoryList(); }
+  if (name === 'settings') { var el = document.getElementById('gas-url'); if (el) el.value = GAS_URL; persist(); updateNotifyStatus(); }
 }
 
 async function postGas(action, data) {
@@ -204,17 +537,73 @@ async function postGas(action, data) {
       headers: { 'Content-Type': 'text/plain' }
     });
     return await res.json();
-  } catch(e) {
-    return null;
-  }
+  } catch(e) { return null; }
 }
 
+/* ---- Sales SC Dropdown ---- */
+/* ---- SC Number Dropdown ---- */
+function updateScNumberDropdown() {
+  var sel = document.getElementById('s-scnumber');
+  if (!sel) return;
+  var now = new Date();
+  var oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+  var cutoff = oneMonthAgo.toISOString().split('T')[0];
+  var todayStr = now.toISOString().split('T')[0];
+  var pending = schedules.filter(function(s) {
+    if (s.done) return false;
+    if (s.date > todayStr) return false;
+    if (s.date < cutoff) return false;
+    return !sales.some(function(r) { return r.scNumber === s.scNumber; });
+  }).sort(function(a, b) { return b.date > a.date ? 1 : -1; });
+  var current = sel.value;
+  sel.innerHTML = '<option value="">— 予定を選択（過去1ヶ月・未入力） —</option>';
+  pending.forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.scNumber;
+    opt.textContent = s.scNumber + '　' + s.date + '　' + s.customer + (s.purpose ? '　(' + s.purpose + ')' : '');
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
+function onScNumberSelect(scNumber) {
+  if (!scNumber) return;
+  var sc = schedules.find(function(s) { return s.scNumber === scNumber; });
+  if (!sc) return;
+  document.getElementById('s-customer').value = sc.customer || '';
+  document.getElementById('s-date').value = sc.date || new Date().toISOString().split('T')[0];
+  var sp = document.getElementById('s-person');
+  if (sp && sc.person) sp.value = sc.person;
+}
+
+function jumpToSalesFromCal(scNumber) {
+  if (!scNumber) return;
+  var sc = schedules.find(function(s) { return s.scNumber === scNumber; });
+  if (!sc) { showToast('この予定はすでに入力済みです'); return; }
+  var hasResult = sales.some(function(r) { return r.scNumber === scNumber; });
+  if (hasResult) { showToast('この予定はすでに営業入力済みです'); return; }
+  updateScNumberDropdown();
+  var navBtn = document.querySelector('.nav button:nth-child(3)');
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav button').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-sales').classList.add('active');
+  if (navBtn) navBtn.classList.add('active');
+  var sel = document.getElementById('s-scnumber');
+  sel.value = scNumber;
+  onScNumberSelect(scNumber);
+  document.getElementById('tab-sales').scrollIntoView({ behavior: 'smooth' });
+  showToast(sc.customer + ' の営業入力フォームに移動しました');
+}
+
+/* ---- Sales ---- */
 async function saveSales() {
-  var customer = document.getElementById('s-customer').value.trim();
-  if (!customer) { showToast('顧客名を入力してください', true); return; }
+  var scNumber = document.getElementById('s-scnumber').value.trim();
+  if (!scNumber) { showToast('管理番号を入力してください', true); return; }
+  var sc = schedules.find(function(s) { return s.scNumber === scNumber; });
+  if (!sc) { showToast('該当する管理番号が見つかりません', true); return; }
+  var customer = document.getElementById('s-customer').value.trim() || sc.customer;
   var entry = {
-    id: Date.now(),
-    customer: customer,
+    id: Date.now(), scNumber: scNumber, customer: customer,
     person: document.getElementById('s-person').value,
     product: document.getElementById('s-product').value,
     amount: parseInt(document.getElementById('s-amount').value) || 0,
@@ -222,102 +611,213 @@ async function saveSales() {
     status: document.getElementById('s-status').value,
     memo: document.getElementById('s-memo').value
   };
-  sales.unshift(entry);
-  persist();
+  sales.unshift(entry); persist();
   var msg = document.getElementById('sales-saving');
   msg.textContent = 'シートに保存中...';
   var result = await postGas('saveSales', entry);
-  if (result && !result.error) {
-    msg.textContent = 'スプレッドシートに保存しました';
-  } else {
-    msg.textContent = result && result.error ? 'エラー: ' + result.error : '接続失敗（ローカルには保存済み）';
-  }
+  msg.textContent = (result && !result.error) ? 'スプレッドシートに保存しました' : 'ローカルに保存しました';
   setTimeout(function() { msg.textContent = ''; }, 3000);
-  clearSalesForm();
-  renderDashboard();
+  clearSalesForm(); renderDashboard(); updateScNumberDropdown();
 }
-
 function clearSalesForm() {
-  ['s-customer','s-person','s-product','s-amount','s-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+  ['s-scnumber','s-customer','s-product','s-amount','s-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+  var sp = document.getElementById('s-person'); if (sp) sp.value = '';
   document.getElementById('s-status').value = 'progress';
   document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
 }
 
+/* ---- Customer ---- */
 async function saveCustomer() {
   var company = document.getElementById('c-company').value.trim();
   if (!company) { showToast('会社名を入力してください', true); return; }
   var entry = {
-    id: Date.now(),
-    company: company,
+    id: Date.now(), company: company,
     contact: document.getElementById('c-contact').value,
     email: document.getElementById('c-email').value,
     phone: document.getElementById('c-phone').value,
     industry: document.getElementById('c-industry').value
   };
-  customers.unshift(entry);
-  persist();
+  customers.unshift(entry); persist();
   var msg = document.getElementById('cust-saving');
   msg.textContent = 'シートに保存中...';
   var result = await postGas('saveCustomer', entry);
-  if (result && !result.error) {
-    msg.textContent = 'スプレッドシートに保存しました';
-  } else {
-    msg.textContent = '接続失敗（ローカルには保存済み）';
-  }
+  msg.textContent = (result && !result.error) ? 'スプレッドシートに保存しました' : 'ローカルに保存しました';
   setTimeout(function() { msg.textContent = ''; }, 3000);
-  clearCustomerForm();
-  renderCustomers();
+  clearCustomerForm(); renderCustomers();
 }
-
 function clearCustomerForm() {
   ['c-company','c-contact','c-email','c-phone','c-industry'].forEach(function(id) { document.getElementById(id).value = ''; });
 }
-
-function saveGasUrl() {
-  var val = document.getElementById('gas-url').value.trim();
-  GAS_URL = val;
-  localStorage.setItem('lms_gas_url', val);
-  showToast('URL を保存しました');
-}
-
-async function testConnection() {
-  var result = await postGas('ping', {});
-  if (result && result.message) showToast('接続成功！');
-  else showToast('接続失敗', true);
-}
-
-async function syncFromSheet() {
-  showToast('読み込み中...');
-  var sr = await postGas('getSales', {});
-  var cr = await postGas('getCustomers', {});
-  if (Array.isArray(sr)) sales = sr;
-  if (Array.isArray(cr)) customers = cr;
-  persist();
-  renderDashboard();
-  renderCustomers();
-  showToast('読み込み完了: 営業 ' + sales.length + ' 件 / 顧客 ' + customers.length + ' 件');
-}
-
-function clearLocalData() {
-  if (!confirm('ローカルデータをクリアしますか？')) return;
-  sales = []; customers = [];
-  persist();
-  renderDashboard();
-  renderCustomers();
-}
-
 function renderCustomers() {
   var q = (document.getElementById('cust-search').value || '').toLowerCase();
   var filtered = customers.filter(function(c) {
     return (c.company||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
   });
   var grid = document.getElementById('customer-grid');
-  if (!filtered.length) { grid.innerHTML = '<p style="color:#aaa;font-size:13px;grid-column:1/-1">登録済みの顧客がありません</p>'; return; }
+  if (!filtered.length) { grid.innerHTML = '<p style="color:#bbb;font-size:13px;grid-column:1/-1;padding:8px 0">登録済みの顧客がありません</p>'; return; }
   grid.innerHTML = filtered.map(function(c) {
     return '<div class="customer-card"><div class="cust-header"><div class="avatar">' + (c.company||'??').slice(0,2) + '</div><div><div class="cust-name">' + (c.company||'') + '</div><div class="cust-sub">' + (c.contact||'—') + '</div></div></div><div class="cust-detail">メール：<span>' + (c.email||'—') + '</span></div><div class="cust-detail">電話：<span>' + (c.phone||'—') + '</span></div><div class="cust-detail">業種：<span>' + (c.industry||'—') + '</span></div></div>';
   }).join('');
 }
 
+/* ---- Schedule ---- */
+async function saveSchedule() {
+  var customer = document.getElementById('sc-customer').value.trim();
+  if (!customer) { showToast('商談先の社名を入力してください', true); return; }
+  var person = document.getElementById('sc-person').value;
+  if (!person) { showToast('社内営業担当者を選択してください', true); return; }
+  var aposource = document.getElementById('sc-aposource').value;
+  if (!aposource) { showToast('アポソースを選択してください', true); return; }
+  var method = document.getElementById('sc-method').value;
+  if (!method) { showToast('営業手法を選択してください', true); return; }
+  var scNumber = generateScNumber();
+  var entry = {
+    id: Date.now(), scNumber: scNumber, customer: customer,
+    person: person,
+    contact: document.getElementById('sc-contact').value,
+    position: document.getElementById('sc-position').value,
+    date: document.getElementById('sc-date').value || new Date().toISOString().split('T')[0],
+    time: document.getElementById('sc-time').value,
+    aposource: aposource,
+    method: method,
+    purpose: document.getElementById('sc-purpose').value,
+    memo: document.getElementById('sc-memo').value,
+    done: false
+  };
+  schedules.unshift(entry); persist();
+  var msg = document.getElementById('sc-saving');
+  msg.textContent = '管理番号 ' + scNumber + ' を発番。シートに保存中...';
+  var result = await postGas('saveSchedule', entry);
+  msg.textContent = (result && !result.error) ? '保存しました（' + scNumber + '）' : 'ローカルに保存しました（' + scNumber + '）';
+  setTimeout(function() { msg.textContent = ''; }, 4000);
+  clearScForm(); renderSchedule(); renderDashboard(); updateScNumberDropdown();
+}
+function clearScForm() {
+  ['sc-customer','sc-contact','sc-position','sc-time','sc-purpose','sc-memo'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['sc-person','sc-aposource','sc-method'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('sc-date').value = new Date().toISOString().split('T')[0];
+}
+function toggleDone(id) {
+  var sc = schedules.find(function(s) { return s.id == id; });
+  if (sc) { sc.done = !sc.done; persist(); renderSchedule(); renderDashboard(); }
+}
+
+function getDateStatus(dateStr) {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  var d = new Date(dateStr); d.setHours(0,0,0,0);
+  if (d < today) return 'overdue';
+  if (d.getTime() === today.getTime()) return 'today';
+  if (d.getTime() === tomorrow.getTime()) return 'tomorrow';
+  return 'normal';
+}
+
+function renderSchedule() {
+  var today = new Date(); today.setHours(0,0,0,0);
+  var todayStr = today.toISOString().split('T')[0];
+  var tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  var tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  // alerts
+  var todayItems = schedules.filter(function(s) { return !s.done && (s.date === todayStr || s.date === tomorrowStr); });
+  var overdueItems = schedules.filter(function(s) {
+    if (s.done || s.date >= todayStr) return false;
+    var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
+    return !hasResult;
+  });
+
+  var todayEl = document.getElementById('alert-today-list');
+  todayEl.innerHTML = todayItems.length ? todayItems.map(function(s) {
+    var cls = s.date === todayStr ? 'today-item' : 'tomorrow-item';
+    var label = s.date === todayStr ? '今日' : '明日';
+    return '<div class="alert-item ' + cls + '"><div><div class="alert-item-title">' + s.customer + ' — ' + (s.purpose||'商談') + '</div><div class="alert-item-sub">' + label + ' ' + (s.time||'時間未定') + '　<span style="font-family:monospace;font-size:10px;color:#aaa">' + (s.scNumber||'') + '</span></div></div></div>';
+  }).join('') : '<div class="empty-state" style="padding:12px">今日・明日の予定はありません</div>';
+
+  var overdueEl = document.getElementById('alert-overdue-list');
+  overdueEl.innerHTML = overdueItems.length ? overdueItems.map(function(s) {
+    return '<div class="alert-item overdue-item"><div><div class="alert-item-title">' + s.customer + ' — ' + (s.purpose||'商談') + '</div><div class="alert-item-sub">期限切れ：' + s.date + '　<span style="font-family:monospace;font-size:10px">' + (s.scNumber||'') + '</span></div></div></div>';
+  }).join('') : '<div class="empty-state" style="padding:12px">期限切れはありません</div>';
+
+  renderCalendar();
+
+  // list
+  var sorted = schedules.slice().sort(function(a,b) { return a.date > b.date ? 1 : -1; });
+  var el = document.getElementById('schedule-rows');
+  if (!sorted.length) { el.innerHTML = '<div class="empty-state">商談予定がありません</div>'; return; }
+  el.innerHTML = sorted.map(function(s) {
+    var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
+    var status = s.done ? 'done' : hasResult ? 'done' : getDateStatus(s.date);
+    var badgeMap = { done: '入力済み', today: '今日', tomorrow: '明日', overdue: '未入力', normal: '予定' };
+    var doneLabel = s.done ? '完了済み' : '完了にする';
+    var doneCls = s.done ? 'done-btn undone' : 'done-btn';
+    var sub = [s.aposource, s.method].filter(Boolean).join(' / ');
+    return '<div class="sch-row' + (s.done ? ' is-done' : '') + '">'
+      + '<span style="font-size:11px;font-family:monospace;color:#888">' + (s.scNumber||'—') + '</span>'
+      + '<span style="font-size:12px">' + s.date + (s.time ? ' ' + s.time : '') + '</span>'
+      + '<span><div style="font-weight:500">' + s.customer + '</div><div style="font-size:11px;color:#999">' + (s.contact||'') + (s.position ? '　' + s.position : '') + '</div></span>'
+      + '<span style="color:#666;font-size:12px"><div>' + (s.purpose||'—') + '</div><div style="font-size:11px;color:#bbb">' + sub + '</div></span>'
+      + '<span><span class="badge ' + status + '">' + badgeMap[status] + '</span></span>'
+      + '<span><button class="' + doneCls + '" onclick="toggleDone(' + s.id + ')">' + doneLabel + '</button></span>'
+      + '</div>';
+  }).join('');
+}
+
+/* ---- Calendar ---- */
+function renderCalendar() {
+  var now = new Date();
+  if (calYear === undefined) { calYear = now.getFullYear(); calMonth = now.getMonth(); }
+  var title = document.getElementById('cal-title');
+  title.textContent = calYear + '年 ' + (calMonth+1) + '月';
+
+  var firstDay = new Date(calYear, calMonth, 1).getDay();
+  var daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  var todayStr = now.toISOString().split('T')[0];
+
+  var dayHeaders = ['日','月','火','水','木','金','土'];
+  var html = dayHeaders.map(function(d, i) {
+    var cls = i === 0 ? 'cal-day-header sun' : i === 6 ? 'cal-day-header sat' : 'cal-day-header';
+    return '<div class="' + cls + '">' + d + '</div>';
+  }).join('');
+
+  var prevDays = new Date(calYear, calMonth, 0).getDate();
+  for (var i = 0; i < firstDay; i++) {
+    html += '<div class="cal-cell other-month"><div class="cal-date">' + (prevDays - firstDay + 1 + i) + '</div></div>';
+  }
+
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var dayEvents = schedules.filter(function(s) { return s.date === dateStr; });
+    var isToday = dateStr === todayStr;
+    var evHtml = dayEvents.slice(0,2).map(function(s) {
+      var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
+      var evCls = (s.done || hasResult) ? 'ev-done' : 'ev-pending';
+      var scNum = s.scNumber || '';
+      return '<div class="cal-event ' + evCls + '" onclick="jumpToSalesFromCal(\'' + scNum + '\')" title="クリックして営業入力へ" style="cursor:pointer">' + s.customer + '</div>';
+    }).join('');
+    if (dayEvents.length > 2) evHtml += '<div style="font-size:10px;color:#bbb;margin-top:2px">+' + (dayEvents.length-2) + '</div>';
+    html += '<div class="cal-cell' + (isToday ? ' today-cell' : '') + '"><div class="cal-date">' + d + '</div>' + evHtml + '</div>';
+  }
+
+  var remaining = 42 - firstDay - daysInMonth;
+  for (var k = 1; k <= remaining; k++) {
+    html += '<div class="cal-cell other-month"><div class="cal-date">' + k + '</div></div>';
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function changeMonth(dir) {
+  calMonth += dir;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+/* ---- Dashboard ---- */
 function renderDashboard() {
   var now = new Date();
   var thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
@@ -328,15 +828,16 @@ function renderDashboard() {
   document.getElementById('m-won').textContent = wonSales.length + '件';
   var rate = thisSales.length ? Math.round(wonSales.length / thisSales.length * 100) : 0;
   document.getElementById('m-rate').textContent = rate + '%';
-  document.getElementById('m-customers').textContent = customers.length + '社';
+  var thisSchedule = schedules.filter(function(s) { return (s.date||'').startsWith(thisMonth) && !s.done; });
+  document.getElementById('m-schedule').textContent = thisSchedule.length + '件';
 
   var recent = sales.slice(0, 8);
   var rows = document.getElementById('recent-rows');
   rows.innerHTML = recent.length ? recent.map(function(s) {
     var badge = s.status === 'won' ? 'won' : s.status === 'lost' ? 'lost' : 'progress';
     var label = s.status === 'won' ? '成約' : s.status === 'lost' ? '失注' : '商談中';
-    return '<div class="table-row"><span>' + (s.customer||'') + '</span><span style="color:#888">' + (s.product||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span style="color:#888">' + (s.date||'') + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
-  }).join('') : '<div style="padding:16px;text-align:center;font-size:13px;color:#aaa">データがありません</div>';
+    return '<div class="table-row"><span style="font-weight:500">' + (s.customer||'') + '</span><span style="color:#888">' + (s.product||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
+  }).join('') : '<div class="empty-state">データがありません</div>';
 
   var months = [], monthRevs = [];
   for (var i = 5; i >= 0; i--) {
@@ -349,25 +850,271 @@ function renderDashboard() {
   if (barChart) barChart.destroy();
   barChart = new Chart(document.getElementById('barChart'), {
     type: 'bar',
-    data: { labels: months, datasets: [{ data: monthRevs, backgroundColor: '#378ADD', borderRadius: 4, borderSkipped: false }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: {} } }
+    data: { labels: months, datasets: [{ data: monthRevs, backgroundColor: '#1976d2', borderRadius: 6, borderSkipped: false }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: {size:11}, color:'#aaa' } }, x: { grid: { display: false }, ticks: { font:{size:11}, color:'#aaa' } } } }
   });
-
   var counts = ['won','progress','lost'].map(function(s) { return sales.filter(function(r) { return r.status === s; }).length; });
   if (pieChart) pieChart.destroy();
   pieChart = new Chart(document.getElementById('pieChart'), {
     type: 'doughnut',
-    data: { labels: ['成約','商談中','失注'], datasets: [{ data: counts, backgroundColor: ['#639922','#378ADD','#E24B4A'], borderWidth: 0 }] },
-    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    data: { labels: ['成約','商談中','失注'], datasets: [{ data: counts, backgroundColor: ['#43a047','#1976d2','#e53935'], borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font:{size:12}, padding:12 } } } }
   });
 }
 
+/* ---- CSV Export ---- */
+function exportCsv(type) {
+  var rows, headers, filename;
+  if (type === 'sales') {
+    headers = ['ID','顧客名','担当者','商品名','金額','日付','ステータス','メモ','管理番号'];
+    rows = sales.map(function(s) { return [s.id, s.customer, s.person, s.product, s.amount, s.date, s.status, s.memo, s.scNumber||'']; });
+    filename = '営業データ_' + new Date().toISOString().split('T')[0] + '.csv';
+  } else {
+    headers = ['ID','会社名','担当者','メール','電話','業種'];
+    rows = customers.map(function(c) { return [c.id, c.company, c.contact, c.email, c.phone, c.industry]; });
+    filename = '顧客データ_' + new Date().toISOString().split('T')[0] + '.csv';
+  }
+  var bom = '\uFEFF';
+  var csv = bom + [headers].concat(rows).map(function(row) {
+    return row.map(function(v) {
+      var str = String(v == null ? '' : v).replace(/"/g, '""');
+      return '"' + str + '"';
+    }).join(',');
+  }).join('\r\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  showToast(filename + ' をダウンロードしました');
+}
+
+/* ---- Customer History ---- */
+function renderHistoryList() {
+  var q = (document.getElementById('hist-search').value || '').toLowerCase();
+  var uniq = {};
+  customers.forEach(function(c) { uniq[c.company] = c; });
+  sales.forEach(function(s) { if (s.customer && !uniq[s.customer]) uniq[s.customer] = { company: s.customer }; });
+  var list = Object.values(uniq).filter(function(c) { return !q || (c.company||'').toLowerCase().includes(q); });
+  var el = document.getElementById('hist-customer-list');
+  if (!list.length) { el.innerHTML = '<span style="font-size:13px;color:#bbb">顧客が見つかりません</span>'; return; }
+  el.innerHTML = list.map(function(c) {
+    var cnt = sales.filter(function(s) { return s.customer === c.company; }).length;
+    return '<button onclick="showHistory(\'' + c.company.replace(/'/g, "\\'") + '\')" style="padding:8px 14px;border-radius:20px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background=\'#f0f2f5\'" onmouseout="this.style.background=\'#fff\'">' + c.company + (cnt ? ' <span style="font-size:11px;color:#1976d2;font-weight:600">(' + cnt + ')</span>' : '') + '</button>';
+  }).join('');
+}
+
+function showHistory(company) {
+  var companySales = sales.filter(function(s) { return s.customer === company; });
+  var companySchedules = schedules.filter(function(s) { return s.customer === company; });
+  document.getElementById('hist-detail').style.display = 'block';
+  document.getElementById('hist-company-title').textContent = company;
+  var wonList = companySales.filter(function(s) { return s.status === 'won'; });
+  var totalRev = wonList.reduce(function(a,b) { return a+(Number(b.amount)||0); }, 0);
+  document.getElementById('hist-total').textContent = companySales.length + '件';
+  document.getElementById('hist-won').textContent = wonList.length + '件';
+  document.getElementById('hist-rate').textContent = companySales.length ? Math.round(wonList.length/companySales.length*100) + '%' : '—';
+  document.getElementById('hist-revenue').textContent = '¥' + totalRev.toLocaleString();
+  var rows = document.getElementById('hist-rows');
+  rows.innerHTML = companySales.length ? companySales.map(function(s) {
+    var badge = s.status === 'won' ? 'won' : s.status === 'lost' ? 'lost' : 'progress';
+    var label = s.status === 'won' ? '成約' : s.status === 'lost' ? '失注' : '商談中';
+    return '<div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 90px;padding:10px 18px;border-bottom:1px solid #f5f5f5;font-size:13px;align-items:center"><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span style="font-family:monospace;font-size:11px;color:#888">' + (s.scNumber||'—') + '</span><span style="color:#666">' + (s.product||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
+  }).join('') : '<div class="empty-state">営業データがありません</div>';
+  var scRows = document.getElementById('hist-schedule-rows');
+  scRows.innerHTML = companySchedules.length ? companySchedules.map(function(s) {
+    var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
+    var statusLabel = s.done ? '完了' : hasResult ? '入力済み' : '未入力';
+    var statusCls = s.done || hasResult ? 'done' : 'overdue';
+    return '<div style="display:grid;grid-template-columns:120px 140px 1fr 90px;padding:10px 18px;border-bottom:1px solid #f5f5f5;font-size:13px;align-items:center"><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span style="font-family:monospace;font-size:11px;color:#888">' + (s.scNumber||'—') + '</span><span style="color:#666">' + (s.purpose||'—') + '</span><span><span class="badge ' + statusCls + '">' + statusLabel + '</span></span></div>';
+  }).join('') : '<div class="empty-state">商談予定がありません</div>';
+  document.getElementById('hist-detail').scrollIntoView({ behavior: 'smooth' });
+}
+
+function closeHistory() {
+  document.getElementById('hist-detail').style.display = 'none';
+}
+
+/* ---- Reminder / Notification ---- */
+function updateNotifyStatus() {
+  var el = document.getElementById('notify-status');
+  if (!el) return;
+  if (!('Notification' in window)) { el.textContent = 'このブラウザは通知に対応していません'; return; }
+  var p = Notification.permission;
+  el.textContent = p === 'granted' ? '通知が有効です' : p === 'denied' ? '通知がブロックされています（ブラウザの設定から変更してください）' : '通知が未設定です';
+}
+
+function requestNotifyPermission() {
+  if (!('Notification' in window)) { showToast('このブラウザは通知に対応していません', true); return; }
+  Notification.requestPermission().then(function(perm) {
+    updateNotifyStatus();
+    if (perm === 'granted') { showToast('通知を許可しました'); checkReminders(); }
+    else showToast('通知が許可されませんでした', true);
+  });
+}
+
+function checkReminders() {
+  var now = new Date();
+  var todayStr = now.toISOString().split('T')[0];
+  var tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+  var tomorrowStr = tomorrow.toISOString().split('T')[0];
+  var targets = schedules.filter(function(s) { return !s.done && (s.date === todayStr || s.date === tomorrowStr); });
+
+  if (!targets.length) { document.getElementById('reminder-banner').style.display = 'none'; return; }
+
+  var todayList = targets.filter(function(s) { return s.date === todayStr; });
+  var tomorrowList = targets.filter(function(s) { return s.date === tomorrowStr; });
+  var parts = [];
+  if (todayList.length) parts.push('今日の商談予定が ' + todayList.length + ' 件あります');
+  if (tomorrowList.length) parts.push('明日の商談予定が ' + tomorrowList.length + ' 件あります');
+  var msg = parts.join('　／　');
+  document.getElementById('reminder-text').textContent = msg;
+  document.getElementById('reminder-banner').style.display = 'block';
+
+  if (Notification.permission === 'granted') {
+    targets.forEach(function(s) {
+      var label = s.date === todayStr ? '今日' : '明日';
+      new Notification('商談予定リマインダ', {
+        body: label + ' ' + (s.time||'') + '　' + s.customer + '　' + (s.purpose||''),
+        icon: ''
+      });
+    });
+  }
+}
+
+/* ---- Settings ---- */
+function saveGasUrl() {
+  var val = document.getElementById('gas-url').value.trim();
+  GAS_URL = val; localStorage.setItem('lms_gas_url', val);
+  showToast('URL を保存しました');
+}
+async function testConnection() {
+  var result = await postGas('ping', {});
+  if (result && result.message) showToast('接続成功！');
+  else showToast('接続失敗', true);
+}
+async function syncFromSheet() {
+  showToast('読み込み中...');
+  var sr = await postGas('getSales', {});
+  var cr = await postGas('getCustomers', {});
+  if (Array.isArray(sr)) sales = sr;
+  if (Array.isArray(cr)) customers = cr;
+  persist(); renderDashboard(); renderCustomers();
+  showToast('読み込み完了: 営業 ' + sales.length + ' 件 / 顧客 ' + customers.length + ' 件');
+}
+function clearLocalData() {
+  if (!confirm('ローカルデータをすべてクリアしますか？')) return;
+  sales = []; customers = []; schedules = [];
+  persist(); renderDashboard(); renderCustomers();
+  showToast('クリアしました');
+}
+
+/* ---- Google OAuth ---- */
+var CLIENT_ID = '890379052761-dea3vk4s71r563ij4v6fljd86fnq7lm5.apps.googleusercontent.com';
+var currentUser = null;
+var accessToken = null;
+
+function onGoogleLogin(response) {
+  var payload = parseJwt(response.credential);
+  if (!payload.hd || payload.hd !== 'ish-inc.com') {
+    alert('ish-inc.com のアカウントでログインしてください');
+    return;
+  }
+  currentUser = {
+    name: payload.name,
+    email: payload.email,
+    picture: payload.picture,
+    role: 'member'
+  };
+  localStorage.setItem('lms_user', JSON.stringify(currentUser));
+  showApp();
+}
+
+function parseJwt(token) {
+  var base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  return JSON.parse(decodeURIComponent(atob(base64).split('').map(function(c) {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join('')));
+}
+
+function showApp() {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('user-info').style.display = 'flex';
+  document.getElementById('user-name').textContent = currentUser.name;
+  document.getElementById('user-email').textContent = currentUser.email;
+  if (currentUser.picture) document.getElementById('user-avatar').src = currentUser.picture;
+
+  // 社内担当者プルダウンに自分を自動セット
+  var scPerson = document.getElementById('sc-person');
+  if (scPerson) {
+    var found = false;
+    for (var i = 0; i < scPerson.options.length; i++) {
+      if (scPerson.options[i].value === currentUser.name) { scPerson.value = currentUser.name; found = true; break; }
+    }
+    if (!found) {
+      var opt = document.createElement('option');
+      opt.value = currentUser.name; opt.textContent = currentUser.name;
+      scPerson.appendChild(opt);
+      scPerson.value = currentUser.name;
+    }
+  }
+
+  // GASにロールを確認
+  if (GAS_URL) {
+    postGas('getRole', { email: currentUser.email }).then(function(result) {
+      if (result && result.role) {
+        currentUser.role = result.role;
+        localStorage.setItem('lms_user', JSON.stringify(currentUser));
+      }
+      initApp();
+    });
+  } else {
+    initApp();
+  }
+}
+
+function logout() {
+  if (!confirm('ログアウトしますか？')) return;
+  currentUser = null;
+  localStorage.removeItem('lms_user');
+  google.accounts.id.disableAutoSelect();
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('user-info').style.display = 'none';
+}
+
+function initApp() {
+  document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sc-date').value = new Date().toISOString().split('T')[0];
+  persist();
+  if (GAS_URL) {
+    (async function() {
+      var sr = await postGas('getSales', {});
+      var cr = await postGas('getCustomers', {});
+      var scr = await postGas('getSchedules', {});
+      if (Array.isArray(sr)) sales = sr;
+      if (Array.isArray(cr)) customers = cr;
+      if (Array.isArray(scr)) schedules = scr;
+      persist();
+      renderDashboard();
+      updateScNumberDropdown();
+      checkReminders();
+    })();
+  } else {
+    renderDashboard();
+    updateScNumberDropdown();
+    checkReminders();
+  }
+  setInterval(checkReminders, 60 * 60 * 1000);
+}
+
+/* ---- Init ---- */
 var savedUrl = localStorage.getItem('lms_gas_url');
 if (savedUrl) GAS_URL = savedUrl;
-document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
-persist();
-renderDashboard();
-renderCustomers();
+var savedUser = localStorage.getItem('lms_user');
+if (savedUser) {
+  currentUser = JSON.parse(savedUser);
+  showApp();
+}
 </script>
 </body>
 </html>
