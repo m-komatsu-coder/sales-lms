@@ -1,11 +1,91 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0048)file:///Users/komatsumina/Downloads/index_5.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>営業管理システム</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="./index_files/chart.umd.min.js"></script>
+<script src="./index_files/firebase-app-compat.js"></script>
+<script src="./index_files/firebase-firestore-compat.js"></script>
+<script src="./index_files/firebase-auth-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAlNuyy8P9pcNUbIXDLyIXMZFA0B6Wcwuk",
+  authDomain: "sales-lms-33c56.firebaseapp.com",
+  projectId: "sales-lms-33c56",
+  storageBucket: "sales-lms-33c56.firebasestorage.app",
+  messagingSenderId: "293931203596",
+  appId: "1:293931203596:web:6e30a109ec37ebed938229"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+window.fbSave = async function(collectionName, data) {
+  try {
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    const ref = await db.collection(collectionName).add(data);
+    console.log('Firebase saved to', collectionName, ref.id);
+    return true;
+  } catch(e) {
+    console.error('Firebase save error:', collectionName, e.code, e.message);
+    return false;
+  }
+};
+
+window.fbGetAll = async function(collectionName) {
+  try {
+    const snap = await db.collection(collectionName).orderBy('createdAt', 'desc').get();
+    return snap.docs.map(d => ({ ...d.data(), _id: d.id }));
+  } catch(e) { console.error(e); return []; }
+};
+
+window.fbListen = function(collectionName, callback) {
+  return db.collection(collectionName).orderBy('createdAt', 'desc').onSnapshot(snap => {
+    callback(snap.docs.map(d => ({ ...d.data(), _id: d.id })));
+  }, err => console.error('fbListen error:', err));
+};
+
+window.fbGetRole = async function(email) {
+  try {
+    const snap = await db.collection('users').get();
+    const user = snap.docs.find(d => d.data().email === email);
+    return user ? user.data().role : 'member';
+  } catch(e) { console.error(e); return 'member'; }
+};
+
+window.firebaseSignIn = function() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ hd: 'ish-inc.com' });
+  auth.signInWithPopup(provider).catch(e => alert('ログイン失敗: ' + e.message));
+};
+
+window.firebaseSignOut = function() {
+  auth.signOut().then(function() {
+    window.currentUser = null;
+    document.getElementById('login-overlay').style.display = 'flex';
+    document.getElementById('user-info').style.display = 'none';
+  });
+};
+
+auth.onAuthStateChanged(function(user) {
+  if (user) {
+    if (!user.email.endsWith('@ish-inc.com')) {
+      auth.signOut();
+      alert('ish-inc.com のアカウントでログインしてください');
+      return;
+    }
+    window.currentUser = {
+      name: user.displayName,
+      email: user.email,
+      picture: user.photoURL,
+      role: 'member'
+    };
+    if (typeof window.onFirebaseLogin === 'function') window.onFirebaseLogin();
+  }
+});
+</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Helvetica Neue', sans-serif; background: #f0f2f5; color: #1a1a1a; }
@@ -162,31 +242,21 @@ textarea { resize: vertical; min-height: 65px; }
   <div class="login-card">
     <div class="login-title">営業管理システム</div>
     <div class="login-sub">ish-inc.com の Google アカウントでログインしてください</div>
-    <div id="g_id_onload"
-      data-client_id="890379052761-dea3vk4s71r563ij4v6fljd86fnq7lm5.apps.googleusercontent.com"
-      data-callback="onGoogleLogin"
-      data-auto_prompt="true">
-    </div>
-    <div class="g_id_signin"
-      data-type="standard"
-      data-size="large"
-      data-theme="outline"
-      data-text="signin_with"
-      data-shape="rectangular"
-      data-locale="ja"
-      data-width="300">
-    </div>
+    <button onclick="window.firebaseSignIn()" style="display:flex;align-items:center;gap:10px;padding:12px 24px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-family:inherit;margin:0 auto">
+      <img src="./index_files/google.svg" width="20" height="20">
+      Google でログイン
+    </button>
   </div>
 </div>
 
 <div class="topbar">
   <div class="topbar-left">
     <h1>営業管理システム</h1>
-    <span class="sync-badge" id="sync-badge">Sheets 連携中</span>
+    <span class="sync-badge" id="sync-badge">Firebase 連携中</span>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
     <div class="user-info" id="user-info" style="display:none">
-      <img id="user-avatar" class="login-avatar" src="" alt="">
+      <img id="user-avatar" class="login-avatar" src="file:///Users/komatsumina/Downloads/index_5.html" alt="">
       <div>
         <div id="user-name" style="font-size:13px;font-weight:500"></div>
         <div id="user-email" style="font-size:11px;color:#999"></div>
@@ -194,19 +264,19 @@ textarea { resize: vertical; min-height: 65px; }
       <button class="logout-btn" onclick="logout()">ログアウト</button>
     </div>
     <div class="nav">
-      <button class="active" onclick="switchTab('dashboard',this)">ダッシュボード</button>
-      <button onclick="switchTab('schedule',this)">商談予定</button>
-      <button onclick="switchTab('sales',this)">営業入力</button>
-      <button onclick="switchTab('customers',this)">顧客管理</button>
-      <button onclick="switchTab('history',this)">商談履歴</button>
-      <button onclick="switchTab('settings',this)">設定</button>
+      <button class="active" onclick="switchTab(&#39;dashboard&#39;,this)">ダッシュボード</button>
+      <button onclick="switchTab(&#39;schedule&#39;,this)">商談予定</button>
+      <button onclick="switchTab(&#39;sales&#39;,this)">営業入力</button>
+      <button onclick="switchTab(&#39;customers&#39;,this)">顧客管理</button>
+      <button onclick="switchTab(&#39;history&#39;,this)">商談履歴</button>
+      <button onclick="switchTab(&#39;settings&#39;,this)">設定</button>
     </div>
   </div>
 </div>
 
 <div id="reminder-banner" style="display:none;background:#fff8e1;border-bottom:1px solid #ffe082;padding:10px 28px;font-size:13px;color:#e65100">
   <span id="reminder-text"></span>
-  <button onclick="document.getElementById('reminder-banner').style.display='none'" style="margin-left:12px;background:none;border:none;cursor:pointer;color:#e65100;font-size:16px;line-height:1">×</button>
+  <button onclick="document.getElementById(&#39;reminder-banner&#39;).style.display=&#39;none&#39;" style="margin-left:12px;background:none;border:none;cursor:pointer;color:#e65100;font-size:16px;line-height:1">×</button>
 </div>
 
 <div class="content">
@@ -234,7 +304,7 @@ textarea { resize: vertical; min-height: 65px; }
     <div class="form-section" style="margin-bottom:16px">
       <div class="section-title">商談予定の登録</div>
       <div class="form-grid">
-        <div class="form-group"><label>社内営業担当者 *</label><select id="sc-person"><option value="">— 選択 —</option></select></div>
+        <div class="form-group"><label>社内営業担当者</label><div id="sc-person-display" style="font-size:13px;padding:9px 12px;background:#f8f8f8;border-radius:8px;border:1px solid #e0e0e0;color:#1a1a1a">—</div><input type="hidden" id="sc-person"></div>
         <div class="form-group"><label>商談先 社名 *</label><input type="text" id="sc-customer" placeholder="例：株式会社ABC"></div>
         <div class="form-group"><label>営業先 担当者名（先方）</label><input type="text" id="sc-contact" placeholder="例：山田 太郎"></div>
         <div class="form-group"><label>営業先 役職</label><input type="text" id="sc-position" placeholder="例：代表取締役・部長"></div>
@@ -309,13 +379,135 @@ textarea { resize: vertical; min-height: 65px; }
             <option value="">— 予定を選択 —</option>
           </select>
         </div>
-        <div class="form-group"><label>顧客名 *</label><input type="text" id="s-customer" placeholder="例：株式会社山田商事"></div>
-        <div class="form-group"><label>担当者</label><select id="s-person"><option value="">— 選択 —</option></select></div>
-        <div class="form-group"><label>商品・サービス名</label><input type="text" id="s-product" placeholder="例：クラウドサービスA"></div>
+        <div class="form-group">
+          <label>営業担当者 *</label>
+          <div id="s-person-display" style="font-size:13px;padding:9px 12px;background:#f8f8f8;border-radius:8px;border:1px solid #e0e0e0;color:#1a1a1a">—</div>
+          <input type="hidden" id="s-person">
+        </div>
+        <div class="form-group">
+          <label>アポソース *</label>
+          <select id="s-aposource">
+            <option value="">— 選択 —</option>
+            <option>現S紹介</option>
+            <option>管S紹介</option>
+            <option>経営者交流会</option>
+            <option>テレアポ(社内)</option>
+            <option>テレアポ(外部)</option>
+            <option>現S</option>
+            <option>管S</option>
+            <option>SNS 源泉</option>
+          </select>
+        </div>
+        <div class="form-group"><label>社名 *</label><input type="text" id="s-customer" placeholder="例：株式会社山田商事"></div>
+        <div class="form-group"><label>役職 *</label><input type="text" id="s-position" placeholder="例：代表取締役・部長"></div>
+        <div class="form-group"><label>営業先 名前 *</label><input type="text" id="s-contact" placeholder="例：山田 太郎"></div>
+        <div class="form-group">
+          <label>営業手法 *</label>
+          <select id="s-method">
+            <option value="">— 選択 —</option>
+            <option>対面</option>
+            <option>リモート</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>営業先 業種 *</label>
+          <select id="s-industry">
+            <option value="">— 選択 —</option>
+            <option>製造業</option>
+            <option>卸売業</option>
+            <option>金融業</option>
+            <option>IT業</option>
+            <option>サービス業</option>
+            <option>不動産業</option>
+            <option>運送業</option>
+            <option>飲食業</option>
+            <option>娯楽・レジャー業</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group"><label>年商（単位 億） *</label><input type="number" id="s-revenue" placeholder="例：10"></div>
+        <div class="form-group"><label>社員数（単位 人） *</label><input type="number" id="s-employees" placeholder="例：50"></div>
+        <div class="form-group">
+          <label>ニーズ *</label>
+          <select id="s-needs">
+            <option value="">— 選択 —</option>
+            <option>採用</option>
+            <option>プロ人財</option>
+            <option>研修</option>
+            <option>人事評価制度</option>
+            <option>KIKU</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>営業結果 *</label>
+          <select id="s-result">
+            <option value="">— 選択 —</option>
+            <option>受注</option>
+            <option>ヨミ</option>
+            <option>再訪(面談)</option>
+            <option>長期追い</option>
+            <option>オチ</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>アライアンス可能性（あり・なし） *</label>
+          <select id="s-alliance">
+            <option value="">— 選択 —</option>
+            <option>あり</option>
+            <option>なし</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>アライアンス商材 *</label>
+          <select id="s-alliance-product">
+            <option value="">— 選択 —</option>
+            <option>採用</option>
+            <option>プロ人財</option>
+            <option>研修</option>
+            <option>人事評価制度</option>
+            <option>KIKU</option>
+            <option>その他</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>営業内容（備考） *</label><textarea id="s-memo" placeholder="営業内容の詳細を記入..."></textarea></div>
+        <div class="form-group full"><label>料金プラン</label><input type="text" id="s-plan" placeholder="例：スタンダードプラン・月額10万円"></div>
+        <div class="form-group"><label>商談日 *</label><input type="date" id="s-date"></div>
         <div class="form-group"><label>金額（円）</label><input type="number" id="s-amount" placeholder="例：500000"></div>
-        <div class="form-group"><label>商談日</label><input type="date" id="s-date"></div>
-        <div class="form-group"><label>ステータス</label><select id="s-status"><option value="progress">商談中</option><option value="won">成約</option><option value="lost">失注</option></select></div>
-        <div class="form-group full"><label>メモ</label><textarea id="s-memo" placeholder="商談内容や特記事項..."></textarea></div>
+      </div>
+
+      <div style="border-top:1px solid #f0f0f0;margin-top:20px;padding-top:20px">
+        <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:14px">次回アクション・フォローアップ</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>次回アクション</label>
+            <select id="s-next-action">
+              <option value="">— 選択 —</option>
+              <option>再訪①</option>
+              <option>再訪②</option>
+              <option>再訪③</option>
+              <option>再訪④以上</option>
+              <option>クロージング</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>次回フォローアップ予定日</label>
+            <input type="date" id="s-next-date">
+          </div>
+          <div class="form-group">
+            <label>次回営業手法</label>
+            <select id="s-next-method">
+              <option value="">— 選択 —</option>
+              <option>対面</option>
+              <option>リモート</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>次回アクション内容</label>
+            <input type="text" id="s-next-memo" placeholder="例：提案書を持参して再訪">
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#999">※ 次回フォローアップ予定日を入力すると、保存時に商談予定へ自動登録されます</div>
       </div>
       <div class="btn-row">
         <span class="saving-msg" id="sales-saving"></span>
@@ -386,49 +578,37 @@ textarea { resize: vertical; min-height: 65px; }
 
   <!-- Settings -->
   <div id="tab-settings" class="tab-panel">
-    <div class="url-section">
-      <div class="section-title">Google スプレッドシート連携</div>
-      <div class="url-row">
-        <input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/...">
-        <button class="btn primary" onclick="saveGasUrl()">接続する</button>
-        <button class="btn" onclick="testConnection()">テスト</button>
-      </div>
-      <div class="url-help">デプロイ URL を貼り付けてください。</div>
+    <div class="form-section">
+      <div class="section-title">接続状態</div>
+      <div style="font-size:13px;color:#2e7d32;font-weight:500">Firebase Firestore に接続済み（リアルタイム同期中）</div>
+      <div style="margin-top:8px;font-size:12px;color:#999">データは自動的に全社員と共有されます</div>
     </div>
     <div class="form-section">
-      <div class="section-title">営業メンバー管理</div>
-      <div class="member-add-row">
-        <input type="text" id="member-input" placeholder="名前を入力（例：田中太郎）" onkeydown="if(event.key==='Enter')addMember()">
-        <button class="btn primary" onclick="addMember()">追加</button>
-      </div>
-      <div class="member-list" id="member-list"></div>
-    </div>
+      <div class="section-title">データ管理</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn" onclick="syncFromSheet()">シートからデータを読み込む</button>
-        <button class="btn" onclick="clearLocalData()">ローカルデータをクリア</button>
+        <button class="btn" onclick="clearLocalData()">ローカルキャッシュをクリア</button>
       </div>
       <div style="margin-top:12px;font-size:12px;color:#aaa">
-        ローカル保存: 営業 <span id="local-sales-count">0</span> 件 / 顧客 <span id="local-cust-count">0</span> 件 / 予定 <span id="local-sc-count">0</span> 件
+        キャッシュ: 営業 <span id="local-sales-count">0</span> 件 / 顧客 <span id="local-cust-count">0</span> 件 / 予定 <span id="local-sc-count">0</span> 件
       </div>
     </div>
     <div class="form-section">
       <div class="section-title">CSVエクスポート</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn primary" onclick="exportCsv('sales')">営業データをCSV出力</button>
-        <button class="btn primary" onclick="exportCsv('customers')">顧客データをCSV出力</button>
+        <button class="btn primary" onclick="exportCsv(&#39;sales&#39;)">営業データをCSV出力</button>
+        <button class="btn primary" onclick="exportCsv(&#39;customers&#39;)">顧客データをCSV出力</button>
       </div>
-      <div style="margin-top:8px;font-size:12px;color:#bbb">ローカルに保存されているデータをCSVファイルとしてダウンロードします。</div>
+      <div style="margin-top:8px;font-size:12px;color:#bbb">現在のデータをCSVファイルとしてダウンロードします。</div>
     </div>
     <div class="form-section">
       <div class="section-title">リマインダ通知</div>
-      <div style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.6">ブラウザの通知許可を有効にすると、当日・翌日の商談予定をお知らせします。アプリを開いている間、毎時チェックします。</div>
+      <div style="font-size:13px;color:#666;margin-bottom:12px;line-height:1.6">ブラウザの通知許可を有効にすると、営業入力が未完了の商談をお知らせします。</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <button class="btn primary" onclick="requestNotifyPermission()">通知を許可する</button>
         <span id="notify-status" style="font-size:12px;color:#999"></span>
       </div>
     </div>
-
-</div>
+  </div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -526,18 +706,7 @@ function switchTab(name, btn) {
   if (name === 'schedule') renderSchedule();
   if (name === 'sales') updateScNumberDropdown();
   if (name === 'history') { renderHistoryList(); }
-  if (name === 'settings') { var el = document.getElementById('gas-url'); if (el) el.value = GAS_URL; persist(); updateNotifyStatus(); }
-}
-
-async function postGas(action, data) {
-  try {
-    var res = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: action, data: data }),
-      headers: { 'Content-Type': 'text/plain' }
-    });
-    return await res.json();
-  } catch(e) { return null; }
+  if (name === 'settings') { updateNotifyStatus(); }
 }
 
 /* ---- Sales SC Dropdown ---- */
@@ -570,10 +739,13 @@ function onScNumberSelect(scNumber) {
   if (!scNumber) return;
   var sc = schedules.find(function(s) { return s.scNumber === scNumber; });
   if (!sc) return;
-  document.getElementById('s-customer').value = sc.customer || '';
-  document.getElementById('s-date').value = sc.date || new Date().toISOString().split('T')[0];
-  var sp = document.getElementById('s-person');
-  if (sp && sc.person) sp.value = sc.person;
+  // 商談予定から自動入力できる項目をセット
+  var customer = document.getElementById('s-customer'); if (customer) customer.value = sc.customer || '';
+  var contact = document.getElementById('s-contact'); if (contact) contact.value = sc.contact || '';
+  var position = document.getElementById('s-position'); if (position) position.value = sc.position || '';
+  var aposource = document.getElementById('s-aposource'); if (aposource && sc.aposource) aposource.value = sc.aposource;
+  var method = document.getElementById('s-method'); if (method && sc.method) method.value = sc.method;
+  var date = document.getElementById('s-date'); if (date) date.value = sc.date || new Date().toISOString().split('T')[0];
 }
 
 function jumpToSalesFromCal(scNumber) {
@@ -597,32 +769,82 @@ function jumpToSalesFromCal(scNumber) {
 
 /* ---- Sales ---- */
 async function saveSales() {
-  var scNumber = document.getElementById('s-scnumber').value.trim();
-  if (!scNumber) { showToast('管理番号を入力してください', true); return; }
+  var scNumber = document.getElementById('s-scnumber').value;
+  if (!scNumber) { showToast('予定を選択してください', true); return; }
   var sc = schedules.find(function(s) { return s.scNumber === scNumber; });
   if (!sc) { showToast('該当する管理番号が見つかりません', true); return; }
   var customer = document.getElementById('s-customer').value.trim() || sc.customer;
+  if (!customer) { showToast('社名を入力してください', true); return; }
+  var aposource = document.getElementById('s-aposource').value;
+  if (!aposource) { showToast('アポソースを選択してください', true); return; }
+  var result_val = document.getElementById('s-result').value;
+  if (!result_val) { showToast('営業結果を選択してください', true); return; }
   var entry = {
-    id: Date.now(), scNumber: scNumber, customer: customer,
+    id: Date.now(),
+    scNumber: scNumber,
     person: document.getElementById('s-person').value,
-    product: document.getElementById('s-product').value,
-    amount: parseInt(document.getElementById('s-amount').value) || 0,
+    aposource: aposource,
+    customer: customer,
+    position: document.getElementById('s-position').value,
+    contact: document.getElementById('s-contact').value,
+    method: document.getElementById('s-method').value,
+    industry: document.getElementById('s-industry').value,
+    revenue: document.getElementById('s-revenue').value,
+    employees: document.getElementById('s-employees').value,
+    needs: document.getElementById('s-needs').value,
+    result: result_val,
+    alliance: document.getElementById('s-alliance').value,
+    allianceProduct: document.getElementById('s-alliance-product').value,
+    memo: document.getElementById('s-memo').value,
+    plan: document.getElementById('s-plan').value,
     date: document.getElementById('s-date').value || new Date().toISOString().split('T')[0],
-    status: document.getElementById('s-status').value,
-    memo: document.getElementById('s-memo').value
+    amount: parseInt(document.getElementById('s-amount').value) || 0,
+    status: result_val === '受注' ? 'won' : result_val === 'オチ' ? 'lost' : 'progress'
   };
   sales.unshift(entry); persist();
   var msg = document.getElementById('sales-saving');
-  msg.textContent = 'シートに保存中...';
-  var result = await postGas('saveSales', entry);
-  msg.textContent = (result && !result.error) ? 'スプレッドシートに保存しました' : 'ローカルに保存しました';
-  setTimeout(function() { msg.textContent = ''; }, 3000);
+  msg.textContent = '保存中...';
+  var ok = await window.fbSave('sales', entry);
+  msg.textContent = ok ? 'Firebaseに保存しました' : 'ローカルに保存しました';
+
+  // 次回フォローアップ予定日があれば商談予定に自動登録
+  var nextDate = document.getElementById('s-next-date').value;
+  if (nextDate) {
+    var nextAction = document.getElementById('s-next-action').value;
+    var nextMethod = document.getElementById('s-next-method').value;
+    var nextMemo = document.getElementById('s-next-memo').value;
+    var nextScNumber = generateScNumber();
+    var nextEntry = {
+      id: Date.now() + 1,
+      scNumber: nextScNumber,
+      customer: entry.customer,
+      person: entry.person,
+      contact: sc ? (sc.contact || '') : '',
+      position: sc ? (sc.position || '') : '',
+      date: nextDate,
+      time: '',
+      aposource: entry.aposource,
+      method: nextMethod,
+      purpose: nextAction,
+      memo: nextMemo,
+      done: false
+    };
+    schedules.unshift(nextEntry);
+    persist();
+    await window.fbSave('schedules', nextEntry);
+    msg.textContent += '　／　次回予定（' + nextScNumber + '）を登録しました';
+  }
+
+  setTimeout(function() { msg.textContent = ''; }, 4000);
   clearSalesForm(); renderDashboard(); updateScNumberDropdown();
 }
 function clearSalesForm() {
-  ['s-scnumber','s-customer','s-product','s-amount','s-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
-  var sp = document.getElementById('s-person'); if (sp) sp.value = '';
-  document.getElementById('s-status').value = 'progress';
+  ['s-customer','s-position','s-contact','s-memo','s-plan','s-amount','s-revenue','s-employees','s-next-date','s-next-memo'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['s-scnumber','s-aposource','s-method','s-industry','s-needs','s-result','s-alliance','s-alliance-product','s-next-action','s-next-method'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
 }
 
@@ -639,9 +861,9 @@ async function saveCustomer() {
   };
   customers.unshift(entry); persist();
   var msg = document.getElementById('cust-saving');
-  msg.textContent = 'シートに保存中...';
-  var result = await postGas('saveCustomer', entry);
-  msg.textContent = (result && !result.error) ? 'スプレッドシートに保存しました' : 'ローカルに保存しました';
+  msg.textContent = '保存中...';
+  var ok = await window.fbSave('customers', entry);
+  msg.textContent = ok ? 'Firebaseに保存しました' : 'ローカルに保存しました';
   setTimeout(function() { msg.textContent = ''; }, 3000);
   clearCustomerForm(); renderCustomers();
 }
@@ -686,9 +908,9 @@ async function saveSchedule() {
   };
   schedules.unshift(entry); persist();
   var msg = document.getElementById('sc-saving');
-  msg.textContent = '管理番号 ' + scNumber + ' を発番。シートに保存中...';
-  var result = await postGas('saveSchedule', entry);
-  msg.textContent = (result && !result.error) ? '保存しました（' + scNumber + '）' : 'ローカルに保存しました（' + scNumber + '）';
+  msg.textContent = '管理番号 ' + scNumber + ' を発番。保存中...';
+  var ok = await window.fbSave('schedules', entry);
+  msg.textContent = ok ? '保存しました（' + scNumber + '）' : 'ローカルに保存しました（' + scNumber + '）';
   setTimeout(function() { msg.textContent = ''; }, 4000);
   clearScForm(); renderSchedule(); renderDashboard(); updateScNumberDropdown();
 }
@@ -727,7 +949,12 @@ function renderSchedule() {
   var overdueItems = schedules.filter(function(s) {
     if (s.done || s.date >= todayStr) return false;
     var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
-    return !hasResult;
+    if (hasResult) return false;
+    // 権限制御: memberは自分の担当分のみ
+    if (currentUser && currentUser.role !== 'admin') {
+      return s.person === currentUser.name;
+    }
+    return true;
   });
 
   var todayEl = document.getElementById('alert-today-list');
@@ -744,24 +971,31 @@ function renderSchedule() {
 
   renderCalendar();
 
-  // list
-  var sorted = schedules.slice().sort(function(a,b) { return a.date > b.date ? 1 : -1; });
+  // list（権限制御）
+  var filtered = schedules.filter(function(s) {
+    if (currentUser && currentUser.role !== 'admin') {
+      return s.person === currentUser.name;
+    }
+    return true;
+  });
+  var sorted = filtered.slice().sort(function(a,b) { return a.date > b.date ? 1 : -1; });
   var el = document.getElementById('schedule-rows');
   if (!sorted.length) { el.innerHTML = '<div class="empty-state">商談予定がありません</div>'; return; }
   el.innerHTML = sorted.map(function(s) {
     var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
-    var status = s.done ? 'done' : hasResult ? 'done' : getDateStatus(s.date);
+    var status = hasResult ? 'done' : getDateStatus(s.date);
     var badgeMap = { done: '入力済み', today: '今日', tomorrow: '明日', overdue: '未入力', normal: '予定' };
-    var doneLabel = s.done ? '完了済み' : '完了にする';
-    var doneCls = s.done ? 'done-btn undone' : 'done-btn';
     var sub = [s.aposource, s.method].filter(Boolean).join(' / ');
-    return '<div class="sch-row' + (s.done ? ' is-done' : '') + '">'
+    var actionBtn = hasResult
+      ? '<span style="font-size:12px;color:#2e7d32;font-weight:500">入力済み</span>'
+      : '<button class="done-btn" onclick="jumpToSalesFromCal(\'' + (s.scNumber||'') + '\')" style="background:#e3f2fd;border-color:#90caf9;color:#1565c0">入力する</button>';
+    return '<div class="sch-row' + (hasResult ? ' is-done' : '') + '">'
       + '<span style="font-size:11px;font-family:monospace;color:#888">' + (s.scNumber||'—') + '</span>'
       + '<span style="font-size:12px">' + s.date + (s.time ? ' ' + s.time : '') + '</span>'
       + '<span><div style="font-weight:500">' + s.customer + '</div><div style="font-size:11px;color:#999">' + (s.contact||'') + (s.position ? '　' + s.position : '') + '</div></span>'
       + '<span style="color:#666;font-size:12px"><div>' + (s.purpose||'—') + '</div><div style="font-size:11px;color:#bbb">' + sub + '</div></span>'
       + '<span><span class="badge ' + status + '">' + badgeMap[status] + '</span></span>'
-      + '<span><button class="' + doneCls + '" onclick="toggleDone(' + s.id + ')">' + doneLabel + '</button></span>'
+      + '<span>' + actionBtn + '</span>'
       + '</div>';
   }).join('');
 }
@@ -821,22 +1055,33 @@ function changeMonth(dir) {
 function renderDashboard() {
   var now = new Date();
   var thisMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  var thisSales = sales.filter(function(s) { return (s.date||'').startsWith(thisMonth); });
+  // 権限制御：memberは自分分のみ
+  var visibleSales = sales.filter(function(s) {
+    if (currentUser && currentUser.role !== 'admin') {
+      return s.person === currentUser.name;
+    }
+    return true;
+  });
+
+  var thisSales = visibleSales.filter(function(s) { return (s.date||'').startsWith(thisMonth); });
   var wonSales = thisSales.filter(function(s) { return s.status === 'won'; });
   var totalRevenue = wonSales.reduce(function(a,b) { return a + (Number(b.amount)||0); }, 0);
   document.getElementById('m-revenue').textContent = '¥' + totalRevenue.toLocaleString();
   document.getElementById('m-won').textContent = wonSales.length + '件';
   var rate = thisSales.length ? Math.round(wonSales.length / thisSales.length * 100) : 0;
   document.getElementById('m-rate').textContent = rate + '%';
-  var thisSchedule = schedules.filter(function(s) { return (s.date||'').startsWith(thisMonth) && !s.done; });
+  var thisSchedule = schedules.filter(function(s) {
+    if (currentUser && currentUser.role !== 'admin') return (s.date||'').startsWith(thisMonth) && s.person === currentUser.name;
+    return (s.date||'').startsWith(thisMonth);
+  });
   document.getElementById('m-schedule').textContent = thisSchedule.length + '件';
 
-  var recent = sales.slice(0, 8);
+  var recent = visibleSales.slice(0, 8);
   var rows = document.getElementById('recent-rows');
   rows.innerHTML = recent.length ? recent.map(function(s) {
     var badge = s.status === 'won' ? 'won' : s.status === 'lost' ? 'lost' : 'progress';
     var label = s.status === 'won' ? '成約' : s.status === 'lost' ? '失注' : '商談中';
-    return '<div class="table-row"><span style="font-weight:500">' + (s.customer||'') + '</span><span style="color:#888">' + (s.product||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
+    return '<div class="table-row"><span style="font-weight:500">' + (s.customer||'') + '</span><span style="color:#888">' + (s.person||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
   }).join('') : '<div class="empty-state">データがありません</div>';
 
   var months = [], monthRevs = [];
@@ -844,7 +1089,7 @@ function renderDashboard() {
     var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
     months.push((d.getMonth()+1) + '月');
-    var rev = sales.filter(function(s) { return (s.date||'').startsWith(key) && s.status === 'won'; }).reduce(function(a,b) { return a+(Number(b.amount)||0); }, 0);
+    var rev = visibleSales.filter(function(s) { return (s.date||'').startsWith(key) && s.status === 'won'; }).reduce(function(a,b) { return a+(Number(b.amount)||0); }, 0);
     monthRevs.push(Math.round(rev / 10000));
   }
   if (barChart) barChart.destroy();
@@ -892,20 +1137,28 @@ function exportCsv(type) {
 /* ---- Customer History ---- */
 function renderHistoryList() {
   var q = (document.getElementById('hist-search').value || '').toLowerCase();
+  var visibleSales = sales.filter(function(s) {
+    if (currentUser && currentUser.role !== 'admin') return s.person === currentUser.name;
+    return true;
+  });
   var uniq = {};
   customers.forEach(function(c) { uniq[c.company] = c; });
-  sales.forEach(function(s) { if (s.customer && !uniq[s.customer]) uniq[s.customer] = { company: s.customer }; });
+  visibleSales.forEach(function(s) { if (s.customer && !uniq[s.customer]) uniq[s.customer] = { company: s.customer }; });
   var list = Object.values(uniq).filter(function(c) { return !q || (c.company||'').toLowerCase().includes(q); });
   var el = document.getElementById('hist-customer-list');
   if (!list.length) { el.innerHTML = '<span style="font-size:13px;color:#bbb">顧客が見つかりません</span>'; return; }
   el.innerHTML = list.map(function(c) {
-    var cnt = sales.filter(function(s) { return s.customer === c.company; }).length;
+    var cnt = visibleSales.filter(function(s) { return s.customer === c.company; }).length;
     return '<button onclick="showHistory(\'' + c.company.replace(/'/g, "\\'") + '\')" style="padding:8px 14px;border-radius:20px;border:1px solid #e0e0e0;background:#fff;cursor:pointer;font-size:13px;font-family:inherit;transition:all 0.15s" onmouseover="this.style.background=\'#f0f2f5\'" onmouseout="this.style.background=\'#fff\'">' + c.company + (cnt ? ' <span style="font-size:11px;color:#1976d2;font-weight:600">(' + cnt + ')</span>' : '') + '</button>';
   }).join('');
 }
 
 function showHistory(company) {
-  var companySales = sales.filter(function(s) { return s.customer === company; });
+  var visibleSales = sales.filter(function(s) {
+    if (currentUser && currentUser.role !== 'admin') return s.person === currentUser.name;
+    return true;
+  });
+  var companySales = visibleSales.filter(function(s) { return s.customer === company; });
   var companySchedules = schedules.filter(function(s) { return s.customer === company; });
   document.getElementById('hist-detail').style.display = 'block';
   document.getElementById('hist-company-title').textContent = company;
@@ -919,7 +1172,7 @@ function showHistory(company) {
   rows.innerHTML = companySales.length ? companySales.map(function(s) {
     var badge = s.status === 'won' ? 'won' : s.status === 'lost' ? 'lost' : 'progress';
     var label = s.status === 'won' ? '成約' : s.status === 'lost' ? '失注' : '商談中';
-    return '<div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 90px;padding:10px 18px;border-bottom:1px solid #f5f5f5;font-size:13px;align-items:center"><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span style="font-family:monospace;font-size:11px;color:#888">' + (s.scNumber||'—') + '</span><span style="color:#666">' + (s.product||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
+    return '<div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 90px;padding:10px 18px;border-bottom:1px solid #f5f5f5;font-size:13px;align-items:center"><span style="color:#aaa;font-size:12px">' + (s.date||'') + '</span><span style="font-family:monospace;font-size:11px;color:#888">' + (s.scNumber||'—') + '</span><span style="color:#666">' + (s.person||'—') + '</span><span>¥' + (Number(s.amount)||0).toLocaleString() + '</span><span><span class="badge ' + badge + '">' + label + '</span></span></div>';
   }).join('') : '<div class="empty-state">営業データがありません</div>';
   var scRows = document.getElementById('hist-schedule-rows');
   scRows.innerHTML = companySchedules.length ? companySchedules.map(function(s) {
@@ -1009,33 +1262,13 @@ function clearLocalData() {
   showToast('クリアしました');
 }
 
-/* ---- Google OAuth ---- */
-var CLIENT_ID = '890379052761-dea3vk4s71r563ij4v6fljd86fnq7lm5.apps.googleusercontent.com';
+/* ---- Firebase Auth ---- */
 var currentUser = null;
-var accessToken = null;
 
-function onGoogleLogin(response) {
-  var payload = parseJwt(response.credential);
-  if (!payload.hd || payload.hd !== 'ish-inc.com') {
-    alert('ish-inc.com のアカウントでログインしてください');
-    return;
-  }
-  currentUser = {
-    name: payload.name,
-    email: payload.email,
-    picture: payload.picture,
-    role: 'member'
-  };
-  localStorage.setItem('lms_user', JSON.stringify(currentUser));
+window.onFirebaseLogin = async function() {
+  currentUser = window.currentUser;
   showApp();
-}
-
-function parseJwt(token) {
-  var base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-  return JSON.parse(decodeURIComponent(atob(base64).split('').map(function(c) {
-    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-  }).join('')));
-}
+};
 
 function showApp() {
   document.getElementById('login-overlay').style.display = 'none';
@@ -1044,77 +1277,58 @@ function showApp() {
   document.getElementById('user-email').textContent = currentUser.email;
   if (currentUser.picture) document.getElementById('user-avatar').src = currentUser.picture;
 
-  // 社内担当者プルダウンに自分を自動セット
-  var scPerson = document.getElementById('sc-person');
-  if (scPerson) {
-    var found = false;
-    for (var i = 0; i < scPerson.options.length; i++) {
-      if (scPerson.options[i].value === currentUser.name) { scPerson.value = currentUser.name; found = true; break; }
-    }
-    if (!found) {
-      var opt = document.createElement('option');
-      opt.value = currentUser.name; opt.textContent = currentUser.name;
-      scPerson.appendChild(opt);
-      scPerson.value = currentUser.name;
-    }
-  }
+  var scPersonInput = document.getElementById('sc-person');
+  var scPersonDisplay = document.getElementById('sc-person-display');
+  if (scPersonInput) scPersonInput.value = currentUser.name;
+  if (scPersonDisplay) scPersonDisplay.textContent = currentUser.name;
 
-  // GASにロールを確認
-  if (GAS_URL) {
-    postGas('getRole', { email: currentUser.email }).then(function(result) {
-      if (result && result.role) {
-        currentUser.role = result.role;
-        localStorage.setItem('lms_user', JSON.stringify(currentUser));
-      }
-      initApp();
-    });
-  } else {
+  var sPersonInput = document.getElementById('s-person');
+  var sPersonDisplay = document.getElementById('s-person-display');
+  if (sPersonInput) sPersonInput.value = currentUser.name;
+  if (sPersonDisplay) sPersonDisplay.textContent = currentUser.name;
+
+  // Firebaseから権限を取得
+  window.fbGetRole(currentUser.email).then(function(role) {
+    currentUser.role = role;
     initApp();
-  }
+  });
 }
 
 function logout() {
   if (!confirm('ログアウトしますか？')) return;
-  currentUser = null;
-  localStorage.removeItem('lms_user');
-  google.accounts.id.disableAutoSelect();
-  document.getElementById('login-overlay').style.display = 'flex';
-  document.getElementById('user-info').style.display = 'none';
+  window.firebaseSignOut();
 }
 
 function initApp() {
   document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('sc-date').value = new Date().toISOString().split('T')[0];
-  persist();
-  if (GAS_URL) {
-    (async function() {
-      var sr = await postGas('getSales', {});
-      var cr = await postGas('getCustomers', {});
-      var scr = await postGas('getSchedules', {});
-      if (Array.isArray(sr)) sales = sr;
-      if (Array.isArray(cr)) customers = cr;
-      if (Array.isArray(scr)) schedules = scr;
-      persist();
-      renderDashboard();
-      updateScNumberDropdown();
-      checkReminders();
-    })();
-  } else {
+
+  // Firestoreからリアルタイム同期
+  window.fbListen('sales', function(data) {
+    sales = data;
+    persist();
     renderDashboard();
     updateScNumberDropdown();
+  });
+  window.fbListen('schedules', function(data) {
+    schedules = data;
+    persist();
+    renderSchedule();
+    updateScNumberDropdown();
     checkReminders();
-  }
+  });
+  window.fbListen('customers', function(data) {
+    customers = data;
+    persist();
+    renderCustomers();
+  });
+
   setInterval(checkReminders, 60 * 60 * 1000);
 }
 
 /* ---- Init ---- */
-var savedUrl = localStorage.getItem('lms_gas_url');
-if (savedUrl) GAS_URL = savedUrl;
-var savedUser = localStorage.getItem('lms_user');
-if (savedUser) {
-  currentUser = JSON.parse(savedUser);
-  showApp();
-}
+var GAS_URL = '';
 </script>
-</body>
-</html>
+
+
+</div></body></html>
