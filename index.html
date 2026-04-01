@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0049)file:///Users/komatsumina/Downloads/index_10.html -->
+<!-- saved from url=(0049)file:///Users/komatsumina/Downloads/index_11.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -58,7 +58,8 @@ window.fbGetRole = async function(email) {
 window.firebaseSignIn = function() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ hd: 'ish-inc.com' });
-  auth.signInWithPopup(provider).catch(e => alert('ログイン失敗: ' + e.message));
+  // スマホ対応のためredirectを使用
+  firebase.auth().signInWithRedirect(provider).catch(e => alert('ログイン失敗: ' + e.message));
 };
 
 window.firebaseSignOut = function() {
@@ -84,6 +85,15 @@ auth.onAuthStateChanged(function(user) {
     };
     if (typeof window.onFirebaseLogin === 'function') window.onFirebaseLogin();
   }
+});
+
+// リダイレクト後の処理（スマホ対応）
+firebase.auth().getRedirectResult().then(function(result) {
+  if (result && result.user) {
+    console.log('Redirect login success:', result.user.email);
+  }
+}).catch(function(e) {
+  console.error('Redirect error:', e);
 });
 </script>
 <style>
@@ -326,7 +336,7 @@ textarea { resize: vertical; min-height: 65px; }
   </div>
   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <div class="user-info" id="user-info" style="display:none">
-      <img id="user-avatar" class="login-avatar" src="file:///Users/komatsumina/Downloads/index_10.html" alt="">
+      <img id="user-avatar" class="login-avatar" src="file:///Users/komatsumina/Downloads/index_11.html" alt="">
       <div>
         <div id="user-name" style="font-size:13px;font-weight:500"></div>
         <div id="user-email" style="font-size:11px;color:#999"></div>
