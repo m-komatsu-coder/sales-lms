@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0048)file:///Users/komatsumina/Downloads/index_5.html -->
+<!-- saved from url=(0049)file:///Users/komatsumina/Downloads/index_10.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -234,6 +234,76 @@ textarea { resize: vertical; min-height: 65px; }
 .login-email { font-size: 11px; color: #999; }
 .logout-btn { margin-top: 8px; font-size: 12px; color: #999; background: none; border: none; cursor: pointer; text-decoration: underline; }
 .user-info { display: flex; align-items: center; gap: 8px; }
+
+/* ---- Mobile Responsive ---- */
+@media (max-width: 768px) {
+  /* Topbar */
+  .topbar { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+  .topbar-left { gap: 8px; }
+  .topbar h1 { font-size: 14px; }
+  #user-info { font-size: 12px; }
+  #user-avatar { width: 28px; height: 28px; }
+  #user-name { font-size: 12px; }
+  #user-email { display: none; }
+
+  /* Nav - スクロール可能な横並び */
+  .nav { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; padding: 3px; }
+  .nav button { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+
+  /* Content */
+  .content { padding: 12px; }
+
+  /* Metrics */
+  .metrics { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .metric-card { padding: 14px; }
+  .metric-value { font-size: 22px; }
+
+  /* Charts */
+  .charts { grid-template-columns: 1fr; }
+
+  /* Form */
+  .form-section { padding: 16px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: 1; }
+  .form-group input, .form-group select, .form-group textarea { font-size: 16px; } /* iOSズーム防止 */
+  .btn-row { flex-wrap: wrap; gap: 8px; }
+  .btn { width: 100%; text-align: center; padding: 12px; font-size: 14px; }
+  .btn.primary { order: -1; }
+
+  /* Schedule table */
+  .sch-table-header { display: none; }
+  .sch-row { grid-template-columns: 1fr; gap: 4px; padding: 12px 14px; border-bottom: 1px solid #f0f0f0; }
+  .sch-row > span:nth-child(1)::before { content: '管理番号: '; color: #aaa; font-size: 11px; }
+  .sch-row > span:nth-child(2)::before { content: '日時: '; color: #aaa; font-size: 11px; }
+
+  /* Data table */
+  .data-table { overflow-x: auto; }
+  .table-header { display: none; }
+  .table-row { grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px 14px; }
+
+  /* Customer grid */
+  .customer-grid { grid-template-columns: 1fr; }
+
+  /* History */
+  .hist-stats { grid-template-columns: repeat(2, 1fr); }
+
+  /* Calendar */
+  .cal-event { font-size: 9px; padding: 1px 3px; }
+
+  /* Section title */
+  .section-title { font-size: 13px; }
+
+  /* Alert box */
+  .schedule-top { flex-direction: column; }
+  .alert-box { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .metrics { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .metric-card { padding: 10px 12px; }
+  .metric-value { font-size: 20px; }
+  .metric-label { font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -254,23 +324,23 @@ textarea { resize: vertical; min-height: 65px; }
     <h1>営業管理システム</h1>
     <span class="sync-badge" id="sync-badge">Firebase 連携中</span>
   </div>
-  <div style="display:flex;align-items:center;gap:16px">
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     <div class="user-info" id="user-info" style="display:none">
-      <img id="user-avatar" class="login-avatar" src="file:///Users/komatsumina/Downloads/index_5.html" alt="">
+      <img id="user-avatar" class="login-avatar" src="file:///Users/komatsumina/Downloads/index_10.html" alt="">
       <div>
         <div id="user-name" style="font-size:13px;font-weight:500"></div>
         <div id="user-email" style="font-size:11px;color:#999"></div>
       </div>
       <button class="logout-btn" onclick="logout()">ログアウト</button>
     </div>
-    <div class="nav">
-      <button class="active" onclick="switchTab(&#39;dashboard&#39;,this)">ダッシュボード</button>
-      <button onclick="switchTab(&#39;schedule&#39;,this)">商談予定</button>
-      <button onclick="switchTab(&#39;sales&#39;,this)">営業入力</button>
-      <button onclick="switchTab(&#39;customers&#39;,this)">顧客管理</button>
-      <button onclick="switchTab(&#39;history&#39;,this)">商談履歴</button>
-      <button onclick="switchTab(&#39;settings&#39;,this)">設定</button>
-    </div>
+  </div>
+  <div class="nav" style="width:100%">
+    <button class="active" onclick="switchTab(&#39;dashboard&#39;,this)">ダッシュボード</button>
+    <button onclick="switchTab(&#39;schedule&#39;,this)">商談予定</button>
+    <button onclick="switchTab(&#39;sales&#39;,this)">営業入力</button>
+    <button onclick="switchTab(&#39;customers&#39;,this)">顧客管理</button>
+    <button onclick="switchTab(&#39;history&#39;,this)">商談履歴</button>
+    <button onclick="switchTab(&#39;settings&#39;,this)">設定</button>
   </div>
 </div>
 
@@ -854,6 +924,7 @@ async function saveCustomer() {
   if (!company) { showToast('会社名を入力してください', true); return; }
   var entry = {
     id: Date.now(), company: company,
+    person: currentUser ? currentUser.name : '',
     contact: document.getElementById('c-contact').value,
     email: document.getElementById('c-email').value,
     phone: document.getElementById('c-phone').value,
@@ -872,7 +943,13 @@ function clearCustomerForm() {
 }
 function renderCustomers() {
   var q = (document.getElementById('cust-search').value || '').toLowerCase();
-  var filtered = customers.filter(function(c) {
+  var visibleCustomers = customers.filter(function(c) {
+    if (currentUser && currentUser.role !== 'admin') {
+      return c.person === currentUser.name;
+    }
+    return true;
+  });
+  var filtered = visibleCustomers.filter(function(c) {
     return (c.company||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
   });
   var grid = document.getElementById('customer-grid');
@@ -1024,7 +1101,11 @@ function renderCalendar() {
 
   for (var d = 1; d <= daysInMonth; d++) {
     var dateStr = calYear + '-' + String(calMonth+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
-    var dayEvents = schedules.filter(function(s) { return s.date === dateStr; });
+    var dayEvents = schedules.filter(function(s) {
+      if (s.date !== dateStr) return false;
+      if (currentUser && currentUser.role !== 'admin') return s.person === currentUser.name;
+      return true;
+    });
     var isToday = dateStr === todayStr;
     var evHtml = dayEvents.slice(0,2).map(function(s) {
       var hasResult = sales.some(function(r) { return r.scNumber === s.scNumber; });
